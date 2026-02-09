@@ -1,0 +1,14 @@
+# API
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+
+# Embeddings
+sentence-transformers==3.0.0
+
+# 2D з high-dim
+umap-learn==0.5.5
+scikit-learn==1.7.2
+numpy==1.26.0
+
+# Data
+datasets==2.18.0

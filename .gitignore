@@ -1,0 +1,50 @@
+### bawag-challenge (.gitignore)
+
+### OS / IDE
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+
+### Backend (FastAPI / Python)
+backend/__pycache__/
+backend/.pytest_cache/
+backend/**/__pycache__/
+backend/.mypy_cache/
+backend/.ruff_cache/
+backend/.venv/
+
+# local data cache produced by ingest.py
+backend/data/news.json
+
+# optional: if you later add more cached artefacts in backend/data
+backend/data/*.json
+backend/data/*.npz
+
+# environment files (keep .env.example tracked if you add it later)
+backend/.env
+backend/.env.*
+
+### Frontend (Vite / React / Tailwind)
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/.vite/
+frontend/.eslintcache
+frontend/*.local
+
+# environment files
+frontend/.env
+frontend/.env.*
+
+### Logs
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/pnpm-debug.log*
+frontend/lerna-debug.log*
+
+### Temporary
+Take-Home\ Challenge\ -\ Semantic\ Navigator.pdf
+docker-compose.yml
+backend/Dockerfile
