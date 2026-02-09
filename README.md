@@ -1,4 +1,4 @@
-# Semantic Navigator (BAWAG take-home)
+# Semantic Navigator
 
 ## Prerequisites
 
