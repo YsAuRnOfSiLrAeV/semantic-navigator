@@ -1,4 +1,5 @@
 from __future__ import annotations
+import os
 
 from sklearn.cluster import KMeans
 
@@ -9,17 +10,16 @@ from umap import UMAP
 
 from app.services.ingest import load_news
 
-MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-
 
 def build_points(
     *,  # keyword-only arguments not to mess with positional arguments
+    model: SentenceTransformer,
     limit: int = 5000,
     use_cache: bool = True,
     force_download: bool = False,
     seed: int = 42,
-    umap_n_neighbors: int = 10, # TRY ON OTHER VALUES
-    umap_min_dist: float = 0.5, # TRY ON OTHER VALUES
+    umap_n_neighbors: int = 10,
+    umap_min_dist: float = 0.5,
 ) -> list[dict[str, Any]]:
     """
     Loads news rows via load_news(), embeds headlines, reduces to 2D with UMAP,
@@ -34,7 +34,6 @@ def build_points(
         for r in rows
     ]
 
-    model = SentenceTransformer(MODEL_NAME)
     # takes a list of headlines and short descriptions, returns a matrix of embeddings
     embeddings = model.encode(
         texts,
@@ -42,7 +41,7 @@ def build_points(
         normalize_embeddings=True, # normalizes embeddings to unit length, good for cosine metric
     )
 
-    k = 30  # initial value, MOVE TO ENV
+    k = int(os.getenv("KMEANS_CLUSTERS", 30))
     k = min(k, len(rows))  # in case there are less points than clusters
 
     kmeans = KMeans(n_clusters=k, random_state=seed, n_init="auto")

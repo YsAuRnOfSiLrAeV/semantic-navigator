@@ -6,36 +6,36 @@ from contextlib import asynccontextmanager
 import anyio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sentence_transformers import SentenceTransformer
 
 from app.api.routes import router
 from app.services.embedding import build_points
 
+from pathlib import Path
+from dotenv import load_dotenv
 
-def _get_int(name: str, default: int) -> int:
-    v = os.getenv(name)
-    return int(v) if v is not None else default
-
-
-def _get_float(name: str, default: float) -> float:
-    v = os.getenv(name)
-    return float(v) if v is not None else default
+env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(env_path)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # precompute points once at startup, keep in memory
-    limit = _get_int("POINTS_LIMIT", 5000)
-    seed = _get_int("POINTS_SEED", 42)
-    umap_n_neighbors = _get_int("UMAP_N_NEIGHBORS", 15)
-    umap_min_dist = _get_float("UMAP_MIN_DIST", 0.1)
+    limit = int(os.getenv("POINTS_LIMIT", 5000))
+    seed = int(os.getenv("POINTS_SEED", 42))
+    umap_n_neighbors = int(os.getenv("UMAP_N_NEIGHBORS", 15))
+    umap_min_dist = float(os.getenv("UMAP_MIN_DIST", 0.1))
 
     app.state.startup_error = None
     app.state.points = []
+    app.state.model = None
 
     try:
+        app.state.model = SentenceTransformer(os.getenv("MODEL_NAME", "sentence-transformers/all-MiniLM-L6-v2"))
         # allocate a separate thread for processing the build_points function
         app.state.points = await anyio.to_thread.run_sync(
             lambda: build_points(
+                model=app.state.model,
                 limit=limit,
                 use_cache=True,
                 force_download=False,
@@ -55,7 +55,7 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[os.getenv("FRONTEND_URL", "http://localhost:5173")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

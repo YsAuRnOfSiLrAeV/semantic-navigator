@@ -6,7 +6,7 @@ type Props = {
   children: ReactNode;
 };
 
-export function SidePanel({ open, onClose, children }: Props) {
+export default function SidePanel({ open, onClose, children }: Props) {
   // This component is the mobile/tablet drawer.
   return (
     <div className={`lg:hidden ${open ? "" : "pointer-events-none"}`}>

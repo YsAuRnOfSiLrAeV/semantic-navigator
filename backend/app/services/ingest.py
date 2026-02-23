@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 from datasets import load_dataset
 
@@ -26,10 +27,12 @@ def load_news(
 
     # if force_download is True, download the dataset from Hugging Face
     # otherwise use local cache
+    dataset_id = os.getenv("DATASET_ID", "heegyu/news-category-dataset")
+    dataset_split = os.getenv("DATASET_SPLIT", "train")
     if force_download:
-        dataset = load_dataset("heegyu/news-category-dataset", split="train", download_mode="force_redownload")
+        dataset = load_dataset(dataset_id, split=dataset_split, download_mode="force_redownload")
     else:
-        dataset = load_dataset("heegyu/news-category-dataset", split="train")
+        dataset = load_dataset(dataset_id, split=dataset_split)
     dataset = dataset.shuffle(seed=seed) # diversify the sample (not biased first N), seed keeps it reproducible
     dataset = dataset.select(range(min(limit, len(dataset))))
 

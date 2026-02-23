@@ -12,3 +12,6 @@ numpy==1.26.0
 
 # Data
 datasets==2.18.0
+
+# Environment
+python-dotenv==1.2.1

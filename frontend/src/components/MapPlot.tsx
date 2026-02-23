@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import Plot from "react-plotly.js";
-import type { Point } from "../api/api";
+import type { TravelPoint } from "../types";
 
 type Props = {
-  points: Point[];
+  points: TravelPoint[];
   onSelect: (id: string) => void;
 };
 
@@ -12,7 +12,7 @@ function clusterColor(cluster: number, k:number): string {
   return `hsl(${hue} 70% 55%)`;
 }
 
-export function MapPlot({ points, onSelect }: Props) {
+export default function MapPlot({ points, onSelect }: Props) {
   // memo to recalculate points' appearance only when points change
   const plotData = useMemo(() => {
     const x = points.map((p) => p.x);
