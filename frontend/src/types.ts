@@ -1,14 +1,33 @@
-export type LimitChoice = "500" | "1000" | "3000" | "5000" | "custom";
+export type LimitChoice = "500" | "1000" | "5000" | "10500" | "custom";
+
+export interface SemanticNavigatorState {
+  points: TravelPoint[];
+  selectedId: string | null;
+  loading: boolean;
+  error: string | null;
+  limitChoice: LimitChoice;
+  customLimit: string;
+  open: boolean;
+}
 
 export interface TravelPoint {
   id: string;
   x: number;
   y: number;
   cluster: number;
-  headline: string;
-  short_description: string;
-  link: string;
-  category: string;
+
+  name: string;
+  description: string;
+
+  categories: string[];
+  review_tags: string[];
+
+  destination: string;
+  rating: number;
+
+  attraction_url: string;
+  tripadvisor_url: string;
+  picture: string;
 }
 
 export interface TravelQuery {

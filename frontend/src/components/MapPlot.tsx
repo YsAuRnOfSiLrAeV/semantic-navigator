@@ -20,7 +20,7 @@ export default function MapPlot({ points, onSelect }: Props) {
     const ids = points.map((p) => p.id);
     //creates an array of strings for hover tooltips
     const text = points.map(
-      (p) => `${p.headline}<br><span style="opacity:.7">${p.category}</span>`,
+      (p) => `${p.name}<br><span style="opacity:.7">${p.destination}</span>`,
     );
     const k = Math.max(...points.map((p) => p.cluster)) + 1;
     const colors = points.map((p) => clusterColor(p.cluster, k));
@@ -68,9 +68,17 @@ export default function MapPlot({ points, onSelect }: Props) {
       style={{ width: "100%", height: "100%" }}
       onClick={(ev) => {
         const pt = ev.points?.[0];  // can be clicked many points at once, so takes the first one
-        const id = pt?.customdata as string | undefined;
+        const pointIndex =
+          typeof pt?.pointIndex === "number"
+            ? pt.pointIndex
+            : typeof pt?.pointNumber === "number"
+              ? pt.pointNumber
+              : undefined;
+        const id = pointIndex !== undefined ? points[pointIndex]?.id : undefined;
         if (id) onSelect(id);
       }}
     />
   );
 }
+
+

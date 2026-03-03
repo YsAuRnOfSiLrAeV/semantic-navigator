@@ -11,7 +11,7 @@ scikit-learn==1.7.2
 numpy==1.26.0
 
 # Data
-datasets==2.18.0
+datasets==4.6.0
 
 # Environment
 python-dotenv==1.2.1

@@ -21,7 +21,7 @@ load_dotenv(env_path)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # precompute points once at startup, keep in memory
-    limit = int(os.getenv("POINTS_LIMIT", 5000))
+    limit = int(os.getenv("POINTS_LIMIT", 10500))
     seed = int(os.getenv("POINTS_SEED", 42))
     umap_n_neighbors = int(os.getenv("UMAP_N_NEIGHBORS", 15))
     umap_min_dist = float(os.getenv("UMAP_MIN_DIST", 0.1))

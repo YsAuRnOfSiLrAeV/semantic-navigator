@@ -10,7 +10,7 @@ router = APIRouter()
 @router.get("/points", response_model=list[Point])
 def get_points(
     request: Request,
-    limit: int | None = Query(default=None, ge=1, le=5000)
+    limit: int | None = Query(default=None, ge=1, le=10500)
 ) -> list[Point]:
     startup_error = request.app.state.startup_error
     if startup_error:

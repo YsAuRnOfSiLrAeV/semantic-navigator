@@ -1,6 +1,6 @@
 import { type TravelPoint} from "../types";
 
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
   
 export async function fetchPoints(limit?: number, signal?: AbortSignal): Promise<TravelPoint[]> {
     const url = new URL(`${API_BASE}/points`);

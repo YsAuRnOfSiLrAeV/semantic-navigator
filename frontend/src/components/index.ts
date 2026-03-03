@@ -1,9 +1,13 @@
-import Navbar from "./Navbar";
+﻿import Navbar from "./Navbar";
+import MapControls from "./MapControls";
 import MapPlot from "./MapPlot";
-import SidePanel from "./SidePanel";
+import PointDetailsPanel from "./PointDetailsPanel";
+import SidePanel from "./PointDetailsPanelMobile";
 
 export {
   Navbar,
+  MapControls,
   MapPlot,
-  SidePanel
+  PointDetailsPanel,
+  SidePanel,
 };

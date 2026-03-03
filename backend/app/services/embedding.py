@@ -1,6 +1,8 @@
 from __future__ import annotations
 import os
 
+import uuid
+
 from sklearn.cluster import KMeans
 
 from typing import Any
@@ -8,13 +10,23 @@ from typing import Any
 from sentence_transformers import SentenceTransformer
 from umap import UMAP
 
-from app.services.ingest import load_news
+from app.services.ingest import load_attractions
+
+
+def to_csv(v):
+    if isinstance(v, list):
+        return ", ".join(str(x) for x in v)
+    return str(v or "")
+
+
+def to_text(v):
+    return "" if v is None else str(v)
 
 
 def build_points(
     *,  # keyword-only arguments not to mess with positional arguments
     model: SentenceTransformer,
-    limit: int = 5000,
+    limit: int = 10500,
     use_cache: bool = True,
     force_download: bool = False,
     seed: int = 42,
@@ -22,15 +34,21 @@ def build_points(
     umap_min_dist: float = 0.5,
 ) -> list[dict[str, Any]]:
     """
-    Loads news rows via load_news(), embeds headlines, reduces to 2D with UMAP,
+    Loads attractions rows via load_attractions(), embeds headlines, reduces to 2D with UMAP,
     and returns points with x/y coordinates for the frontend.
     """
-    rows = load_news(limit=limit, use_cache=use_cache, force_download=force_download, seed=seed)
+    rows = load_attractions(limit=limit, use_cache=use_cache, force_download=force_download, seed=seed)
     if not rows:
         return []
 
     texts = [
-        (r.get("headline", "") + ". " + r.get("short_description", "")).strip()
+        ("Name: " + to_text(r.get("name", "")) + ".\n" +
+        "Description: " + to_text(r.get("description", "")) + ".\n" +
+        "Categories: " + to_csv(r.get("categories", "")) + ".\n" +
+        "Review tags: : " + to_csv(r.get("review_tags", "")) + ".\n" +
+        "Destination: " + to_text(r.get("destination", "")) + ".\n" +
+        "Rating: " + to_text(r.get("rating", ""))
+        ).strip()
         for r in rows
     ]
 
@@ -60,17 +78,23 @@ def build_points(
 
     points: list[dict[str, Any]] = []
     for i, row in enumerate(rows):
-        doc_id = row.get("link") or str(i) # stable id with link, fallback to index
+        raw_id = row.get("tripadvisor_url") or row.get("attraction_url") or f"{row.get('name','')}|{row.get('destination','')}|{i}"
+        doc_id = str(uuid.uuid5(uuid.NAMESPACE_URL, raw_id))
         points.append(
             {
                 "id": doc_id,
                 "x": float(coords[i, 0]),
                 "y": float(coords[i, 1]),
                 "cluster": int(cluster_labels[i]),
-                "headline": row.get("headline", ""),
-                "short_description": row.get("short_description", ""),
-                "link": row.get("link", ""),
-                "category": row.get("category", ""),
+                "name": row.get("name", ""),
+                "description": row.get("description", ""),
+                "categories": row.get("categories", ""),
+                "review_tags": row.get("review_tags", ""),
+                "destination": row.get("destination", ""),
+                "rating": row.get("rating", ""),
+                "attraction_url": row.get("attraction_url", ""),
+                "tripadvisor_url": row.get("tripadvisor_url", ""),
+                "picture": row.get("picture", ""),
             }
         )
 
