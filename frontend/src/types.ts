@@ -1,15 +1,5 @@
 export type LimitChoice = "500" | "1000" | "5000" | "10500" | "custom";
 
-export interface SemanticNavigatorState {
-  points: TravelPoint[];
-  selectedId: string | null;
-  loading: boolean;
-  error: string | null;
-  limitChoice: LimitChoice;
-  customLimit: string;
-  open: boolean;
-}
-
 export interface TravelPoint {
   id: string;
   x: number;

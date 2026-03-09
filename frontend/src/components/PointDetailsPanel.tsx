@@ -1,21 +1,18 @@
-﻿import { useState } from "react";
-import type { TravelPoint } from "../types";
+﻿import { memo, useCallback, useState } from "react";
 import PointDetailsPanelMobile from "./PointDetailsPanelMobile";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { setOpen } from "../store/mapSlice";
+import { selectOpen, selectSelectedPoint } from "../store/selectors";
 
 const MAX_REVIEW_TAGS = Number(import.meta.env.VITE_MAX_REVIEW_TAGS);
 
-type Props = {
-  selected: TravelPoint | null;
-  open: boolean;
-  onClose: () => void;
-};
-
-function PointDetailsContent({ selected }: { selected: TravelPoint | null }) {
+function PointDetailsContent() {
+  const selected = useAppSelector(selectSelectedPoint);
   const [reviewTagsExtended, setReviewTagsExtended] = useState(false);
 
-  function toggleReviewTags() {
+  const toggleReviewTags = useCallback(() => {
     setReviewTagsExtended((prev) => !prev);
-  }
+  }, []);
 
   if (!selected) {
     return <div className="text-sm text-zinc-400">Click a point to see details.</div>;
@@ -104,18 +101,27 @@ function PointDetailsContent({ selected }: { selected: TravelPoint | null }) {
   );
 }
 
-export default function PointDetailsPanel({ selected, open, onClose }: Props) {
+function PointDetailsPanel() {
+  const dispatch = useAppDispatch();
+  const open = useAppSelector(selectOpen);
+
+  const handleClose = useCallback(() => {
+    dispatch(setOpen(false));
+  }, [dispatch]);
+
   return (
     <>
       <aside className="hidden lg:block min-h-0">
         <div className="p-6 h-full overflow-auto">
-          <PointDetailsContent selected={selected} />
+          <PointDetailsContent />
         </div>
       </aside>
 
-      <PointDetailsPanelMobile open={open} onClose={onClose}>
-        <PointDetailsContent selected={selected} />
+      <PointDetailsPanelMobile open={open} onClose={handleClose}>
+        <PointDetailsContent />
       </PointDetailsPanelMobile>
     </>
   );
 }
+
+export default memo(PointDetailsPanel);

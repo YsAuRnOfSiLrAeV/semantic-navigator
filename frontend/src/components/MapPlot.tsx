@@ -1,19 +1,18 @@
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import Plot from "react-plotly.js";
-import type { TravelPoint } from "../types";
-
-type Props = {
-  points: TravelPoint[];
-  onSelect: (id: string) => void;
-};
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { setOpen, setSelectedId } from "../store/mapSlice";
+import { selectPoints } from "../store/selectors";
 
 function clusterColor(cluster: number, k:number): string {
   const hue = (cluster * (360 / k)) % 360;
   return `hsl(${hue} 70% 55%)`;
 }
 
-export default function MapPlot({ points, onSelect }: Props) {
-  // memo to recalculate points' appearance only when points change
+function MapPlot() {
+  const dispatch = useAppDispatch();
+  const points = useAppSelector(selectPoints);
+
   const plotData = useMemo(() => {
     const x = points.map((p) => p.x);
     const y = points.map((p) => p.y);
@@ -68,17 +67,19 @@ export default function MapPlot({ points, onSelect }: Props) {
       style={{ width: "100%", height: "100%" }}
       onClick={(ev) => {
         const pt = ev.points?.[0];  // can be clicked many points at once, so takes the first one
-        const pointIndex =
-          typeof pt?.pointIndex === "number"
-            ? pt.pointIndex
-            : typeof pt?.pointNumber === "number"
-              ? pt.pointNumber
-              : undefined;
-        const id = pointIndex !== undefined ? points[pointIndex]?.id : undefined;
-        if (id) onSelect(id);
+        const idx =
+          typeof pt?.pointIndex === "number" ? pt.pointIndex :
+          typeof pt?.pointNumber === "number" ? pt.pointNumber :
+          -1;
+        if (idx < 0) return;
+        const id = points[idx]?.id;
+        if (!id) return;
+
+        dispatch(setSelectedId(id));
+        dispatch(setOpen(true));
       }}
     />
   );
 }
 
-
+export default memo(MapPlot);
