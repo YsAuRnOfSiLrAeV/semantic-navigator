@@ -1,68 +1,75 @@
-# Travel Semantic Navigator
+﻿# Travel Semantic Navigator
 
 ## Overview
-
-Travel Semantic Navigator is a React + FastAPI application for semantic exploration of travel attractions on a 2D map.
-The backend builds embeddings and clusters for attractions from the `itinerai/attractions` dataset, and the frontend displays them as interactive points with destination, rating, categories, review tags, and external links.
-
-## Theme
-
-The theme of the project is semantic travel discovery.
-Instead of listing attractions in a flat catalog, the app maps semantically similar places close to each other so the user can explore destinations visually.
-
-Why this theme fits the assignment:
-- it has meaningful UI state and interactions;
-- it has a clear domain model (`TravelPoint`, selected point, detail panel, point limit controls);
-- it supports future logic such as semantic search, travel intent prompts, and saved places.
+Travel Semantic Navigator is a React + FastAPI app for semantic exploration of travel attractions on a 2D map.
+The backend computes embeddings/clusters and the frontend visualizes interactive points with destination, rating, categories, review tags, and source links.
 
 ## Dataset
+Current dataset: `itinerai/attractions`.
 
-The current backend uses the `itinerai/attractions` dataset.
-It provides global attraction coverage with destinations such as Amsterdam, Bali, Bangkok, Berlin, Boston, Cape Town, Dubai, Istanbul, London, Miami, New Delhi, New York City, Paris, Rome, Seoul, Singapore, Sydney, Tokyo, Toronto, Vancouver, Zurich, and more.
+## Backend Integration Status
+Backend integration is already implemented.
 
-The dataset fields currently used by the app include:
-- attraction name;
-- description;
-- destination;
-- categories;
-- review tags;
-- rating;
-- attraction and TripAdvisor links;
-- image URL.
+Current integration details:
+- backend endpoint: `GET /points?limit=...`
+- frontend API module: `frontend/src/api/api.ts`
+- frontend map page loads data from backend and renders Plotly points
 
-## Domain Types
+This project does not use mock backend data in runtime flow: map data comes from the live FastAPI endpoint.
 
-Type definitions live in `frontend/src/types.ts`.
+## State Management (Project 4)
+Primary state management library: **Redux Toolkit**.
 
-Current core types:
-- `TravelPoint`
-- `TravelQuery`
-- `SavedPlace`
-- `LimitChoice`
+Why Redux Toolkit:
+- shared state across multiple UI blocks (`MapControls`, `MapPlot`, `PointDetailsPanel`)
+- predictable update flow (action -> reducer -> store)
+- scalable for future pages/features (user preferences, saved places, semantic search)
 
-## Frontend Structure
+Redux files:
+- `frontend/src/store/index.ts`
+- `frontend/src/store/mapSlice.ts`
+- `frontend/src/store/hooks.ts`
+- `frontend/src/store/selectors.ts`
 
-Relevant frontend files:
-- `frontend/src/App.tsx` - top-level app shell and route composition.
-- `frontend/src/main.tsx` - React entry point.
-- `frontend/src/pages/HomePage.tsx` - home screen.
-- `frontend/src/pages/MapPage.tsx` - semantic map page.
-- `frontend/src/pages/AboutPage.tsx` - project description page.
-- `frontend/src/components/MapPlot.tsx` - Plotly semantic map.
-- `frontend/src/components/MapControls.tsx` - point-limit controls.
-- `frontend/src/components/PointDetailsPanel.tsx` - desktop and mobile detail panel content.
+Current shared state (`MapState`):
+- `points: TravelPoint[]`
+- `selectedId: string | null`
+- `open: boolean`
+- `loading: boolean`
+- `error: string | null`
+- `limitChoice: LimitChoice`
+- `customLimit: string`
+
+## Proof-of-Wiring Operations
+Working Redux operations from UI:
+1. change points limit (`setLimitChoice`)
+2. update custom limit input (`setCustomLimit`)
+3. load points (`setLoading`, `setPoints`, `setError`)
+4. select map point (`setSelectedId`)
+5. open/close details panel (`setOpen`)
+
+## API Layer Note
+The project already has a typed API access layer in `frontend/src/api/api.ts` (currently `fetchPoints`).
+Backend is integrated directly through this module.
+
+## Agent Instructions
+AI-agent instructions file is provided at:
+- `AGENTS.md`
+
+It contains:
+- app overview
+- state management approach
+- state shape
+- API conventions
+- file structure rules
+- feature-adding workflow
 
 ## Routes
-
-Configured routes:
 - `/` - Home page
 - `/map` - Semantic map page
 - `/about` - About page
 
 ## Environment Variables
-
-Frontend variables are configured through Vite env files.
-
 Example `frontend/.env`:
 
 ```env
@@ -72,9 +79,8 @@ VITE_LIMIT_INPUT_DEBOUNCE_MS=450
 VITE_MAX_REVIEW_TAGS=18
 ```
 
-## Backend Setup
-
-From the repository root:
+## Run Locally
+Backend:
 
 ```bat
 cd backend
@@ -84,14 +90,7 @@ pip install -r requirements.txt
 python -m uvicorn app.main:app --reload
 ```
 
-Backend notes:
-- API runs on `http://127.0.0.1:8000`
-- the app uses sentence-transformer embeddings, UMAP projection, and clustering
-- the backend currently depends on a `datasets` version compatible with `itinerai/attractions`
-
-## Frontend Setup
-
-From the repository root:
+Frontend:
 
 ```bat
 cd frontend
@@ -99,12 +98,7 @@ npm install
 npm run dev
 ```
 
-The Vite dev server usually runs on `http://localhost:5173` or `http://localhost:5174`.
-
-## Build Verification
-
-Useful checks:
-
+## Validation
 ```bat
 cd frontend
 npx tsc --noEmit
@@ -112,11 +106,10 @@ npm run build
 ```
 
 ## AI Usage Statement
+AI was used as an engineering assistant for:
+- architecture discussion and Redux migration planning
+- store/slice/selectors setup review
+- code-level troubleshooting and refactor guidance
+- project documentation updates
 
-AI was used as a coding assistant for:
-- breaking the assignment into implementation steps;
-- reviewing frontend structure and routing;
-- suggesting refactors for `MapPage`, `MapPlot`, and the details panel;
-- helping document the current project state.
-
-All code and structural decisions were reviewed manually and adjusted inside the project.
+All final changes were reviewed and adjusted manually in the codebase.
