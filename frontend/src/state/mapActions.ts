@@ -1,5 +1,23 @@
+import { searchSemanticPoints } from "../api/api";
 import type { LimitChoice, TravelPoint } from "../types";
 import { initialMapState, mapEngine } from "./mapEngine";
+
+const SEMANTIC_TOP_K = Number(import.meta.env.VITE_SEMANTIC_TOP_K ?? "30");
+
+function resolveCurrentLimit(): number | undefined {
+  const limitChoice = mapEngine.getCurrentValue("limitChoice");
+
+  if (limitChoice === "custom") {
+    const customLimit = mapEngine.getCurrentValue("customLimit");
+    const parsed = Number(customLimit);
+    if (Number.isFinite(parsed) && Number.isInteger(parsed) && parsed >= 1) {
+      return parsed;
+    }
+    return undefined;
+  }
+
+  return Number(limitChoice);
+}
 
 export function setPoints(points: TravelPoint[]) {
   const prevSelectedId = mapEngine.getCurrentValue("selectedId");
@@ -37,6 +55,47 @@ export function setLoading(loading: boolean) {
 
 export function setError(error: string | null) {
   mapEngine.setValue("error", error);
+}
+
+export function setSemanticQuery(semanticQuery: string) {
+  mapEngine.setValue("semanticQuery", semanticQuery);
+}
+
+export function setSemanticLoading(semanticLoading: boolean) {
+  mapEngine.setValue("semanticLoading", semanticLoading);
+}
+
+export function setSemanticError(semanticError: string | null) {
+  mapEngine.setValue("semanticError", semanticError);
+}
+
+export async function runSemanticSearch() {
+  const query = mapEngine.getCurrentValue("semanticQuery").trim();
+
+  if (query.length < 3) {
+    setSemanticError("Please enter at least 3 characters.");
+    return;
+  }
+
+  try {
+    setSemanticLoading(true);
+    setSemanticError(null);
+
+    const limit = resolveCurrentLimit();
+
+    const response = await searchSemanticPoints(query, {
+      topK: SEMANTIC_TOP_K,
+      limit,
+    });
+
+    const points = response.results.map((item) => item.point);
+    setPoints(points);
+    setOpen(false);
+  } catch (error) {
+    setSemanticError(error instanceof Error ? error.message : "Semantic search failed");
+  } finally {
+    setSemanticLoading(false);
+  }
 }
 
 export function resetMapState() {

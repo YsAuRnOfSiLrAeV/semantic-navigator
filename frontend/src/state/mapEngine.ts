@@ -9,6 +9,10 @@ export type MapState = {
   error: string | null;
   limitChoice: LimitChoice;
   customLimit: string;
+
+  semanticQuery: string;
+  semanticLoading: boolean;
+  semanticError: string | null;
 };
 
 const DEFAULT_LIMIT = import.meta.env.VITE_DEFAULT_POINTS_LIMIT as LimitChoice;
@@ -21,6 +25,10 @@ export const initialMapState: MapState = {
   error: null,
   limitChoice: DEFAULT_LIMIT,
   customLimit: "",
+
+  semanticQuery: "",
+  semanticLoading: false,
+  semanticError: null,
 };
 
 export const mapEngine = createEngine<MapState>(initialMapState);

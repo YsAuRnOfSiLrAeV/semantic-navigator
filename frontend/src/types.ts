@@ -30,3 +30,15 @@ export interface SavedPlace {
   note: string;
   createdAt: string;
 }
+
+export interface SemanticSearchResult {
+  point: TravelPoint;
+  score: number;
+}
+
+export interface SemanticSearchResponse {
+  query: string;
+  top_k: number;
+  total_candidates: number;
+  results: SemanticSearchResult[];
+}

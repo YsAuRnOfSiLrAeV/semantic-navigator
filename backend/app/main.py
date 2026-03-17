@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sentence_transformers import SentenceTransformer
 
 from app.api.routes import router
-from app.services.embedding import build_points
+from app.services.embedding import build_points, build_semantic_index
 
 from pathlib import Path
 from dotenv import load_dotenv
@@ -29,6 +29,7 @@ async def lifespan(app: FastAPI):
     app.state.startup_error = None
     app.state.points = []
     app.state.model = None
+    app.state.semantic_index = None
 
     try:
         app.state.model = SentenceTransformer(os.getenv("MODEL_NAME", "sentence-transformers/all-MiniLM-L6-v2"))
@@ -42,6 +43,12 @@ async def lifespan(app: FastAPI):
                 seed=seed,
                 umap_n_neighbors=umap_n_neighbors,
                 umap_min_dist=umap_min_dist,
+            )
+        )
+        app.state.semantic_index = await anyio.to_thread.run_sync(
+            lambda: build_semantic_index(
+                model=app.state.model,
+                points=app.state.points,
             )
         )
     except Exception as e:

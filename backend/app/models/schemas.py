@@ -1,6 +1,6 @@
 ﻿from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Point(BaseModel):
@@ -17,3 +17,21 @@ class Point(BaseModel):
     attraction_url: str
     tripadvisor_url: str
     picture: str
+
+
+class SemanticSearchRequest(BaseModel):
+    query: str = Field(..., min_length=3, max_length=2000)
+    top_k: int = Field(default=30, ge=1, le=100)
+    limit: int | None = Field(default=None, ge=1, le=10500)
+
+
+class SemanticSearchResult(BaseModel):
+    point: Point
+    score: float
+
+
+class SemanticSearchResponse(BaseModel):
+    query: str
+    top_k: int
+    total_candidates: int
+    results: list[SemanticSearchResult]

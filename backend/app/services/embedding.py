@@ -12,6 +12,8 @@ from umap import UMAP
 
 from app.services.ingest import load_attractions
 
+import numpy as np
+
 
 def to_csv(v):
     if isinstance(v, list):
@@ -99,3 +101,91 @@ def build_points(
         )
 
     return points
+
+
+def build_semantic_index(
+    *,
+    model: SentenceTransformer,
+    points: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """
+    Build in-memory semantic index from already prepared points.
+    Stores normalized embeddings matrix and id->index map.
+    """
+    if not points:
+        return {
+            "embeddings": np.empty((0, 0), dtype=np.float32),
+            "id_to_idx": {},
+            "dim": 0,
+        }
+
+    texts = [
+        (
+            "Name: " + to_text(p.get("name", "")) + ".\n"
+            "Description: " + to_text(p.get("description", "")) + ".\n"
+            "Categories: " + to_csv(p.get("categories", [])) + ".\n"
+            "Review tags: " + to_csv(p.get("review_tags", [])) + ".\n"
+            "Destination: " + to_text(p.get("destination", "")) + ".\n"
+            "Rating: " + to_text(p.get("rating", ""))
+        ).strip()
+        for p in points
+    ]
+
+    embeddings = model.encode(
+        texts,
+        show_progress_bar=True,
+        normalize_embeddings=True,
+    )
+    embeddings = np.asarray(embeddings, dtype=np.float32)
+
+    id_to_idx = {p["id"]: i for i, p in enumerate(points)}
+
+    return {
+        "embeddings": embeddings,
+        "id_to_idx": id_to_idx,
+        "dim": int(embeddings.shape[1]),
+    }
+
+
+def semantic_search(
+    *,
+    model: SentenceTransformer,
+    points: list[dict[str, Any]],
+    index: dict[str, Any],
+    query: str,
+    top_k: int = 30,
+    limit: int | None = None,
+) -> list[dict[str, Any]]:
+    """
+    Returns top_k nearest points by cosine similarity in embedding space.
+    """
+    embeddings: np.ndarray = index["embeddings"]
+
+    if embeddings.size == 0 or len(points) == 0:
+        return []
+
+    n = len(points) if limit is None else min(limit, len(points))
+    if n <= 0:
+        return []
+
+    query_vec = model.encode([query], normalize_embeddings=True)
+    query_vec = np.asarray(query_vec, dtype=np.float32)[0]
+
+    sims = embeddings[:n] @ query_vec  # cosine since vectors are normalized
+
+    k = min(top_k, n)
+    if k <= 0:
+        return []
+
+    top_idx_unsorted = np.argpartition(-sims, k - 1)[:k]
+    top_idx = top_idx_unsorted[np.argsort(-sims[top_idx_unsorted])]
+
+    out: list[dict[str, Any]] = []
+    for i in top_idx.tolist():
+        out.append(
+            {
+                "point": points[i],
+                "score": float(sims[i]),
+            }
+        )
+    return out
