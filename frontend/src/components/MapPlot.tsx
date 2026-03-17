@@ -1,8 +1,7 @@
 import { memo, useMemo } from "react";
 import Plot from "react-plotly.js";
-import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { setOpen, setSelectedId } from "../store/mapSlice";
-import { selectPoints } from "../store/selectors";
+import { useMapValue } from "../state/mapHooks";
+import { setOpen, setSelectedId } from "../state/mapActions";
 
 function clusterColor(cluster: number, k:number): string {
   const hue = (cluster * (360 / k)) % 360;
@@ -10,14 +9,13 @@ function clusterColor(cluster: number, k:number): string {
 }
 
 function MapPlot() {
-  const dispatch = useAppDispatch();
-  const points = useAppSelector(selectPoints);
+  const points = useMapValue("points");
 
   const plotData = useMemo(() => {
     const x = points.map((p) => p.x);
     const y = points.map((p) => p.y);
     const ids = points.map((p) => p.id);
-    //creates an array of strings for hover tooltips
+    //creates an array of strings for hover tooltips 
     const text = points.map(
       (p) => `${p.name}<br><span style="opacity:.7">${p.destination}</span>`,
     );
@@ -75,8 +73,8 @@ function MapPlot() {
         const id = points[idx]?.id;
         if (!id) return;
 
-        dispatch(setSelectedId(id));
-        dispatch(setOpen(true));
+        setSelectedId(id);
+        setOpen(true);
       }}
     />
   );

@@ -1,15 +1,17 @@
 ﻿import { useEffect } from "react";
 import { fetchPoints } from "../api/api";
 import { MapControls, MapPlot, PointDetailsPanel } from "../components";
-import { setError, setLoading, setPoints } from "../store/mapSlice";
-import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { useMapValue } from "../state/mapHooks";
+import { setError, setLoading, setPoints } from "../state/mapActions";
+
 
 const DEBOUNCE_MS = Number(import.meta.env.VITE_LIMIT_INPUT_DEBOUNCE_MS);
 
 export default function MapPage() {
-  const dispatch = useAppDispatch();
-  const { loading, error, limitChoice, customLimit } =
-    useAppSelector((state) => state.map);
+  const loading = useMapValue("loading");
+  const error = useMapValue("error");
+  const limitChoice = useMapValue("limitChoice");
+  const customLimit = useMapValue("customLimit");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -17,18 +19,18 @@ export default function MapPage() {
 
     const run = async (limit: number | undefined) => {
       try {
-        dispatch(setLoading(true));
-        dispatch(setError(null));
+        setLoading(true);
+        setError(null);
         const data = await fetchPoints(limit, controller.signal);
-        dispatch(setPoints(data));
+        setPoints(data);
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") {
           return;
         }
 
-        dispatch(setError(error instanceof Error ? error.message : "Unknown error"));
+        setError(error instanceof Error ? error.message : "Unknown error");
       } finally {
-        dispatch(setLoading(false));
+        setLoading(false);
       }
     };
 
@@ -37,7 +39,7 @@ export default function MapPage() {
         const parsed = Number(customLimit);
 
         if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 1) {
-          dispatch(setError("Custom limit must be a positive integer."));
+          setError("Custom limit must be a positive integer.");
           return;
         }
 
@@ -54,7 +56,7 @@ export default function MapPage() {
         window.clearTimeout(timeoutId);
       }
     };
-  }, [limitChoice, customLimit, dispatch]);
+  }, [limitChoice, customLimit]);
 
   return (
     <>
@@ -84,3 +86,4 @@ export default function MapPage() {
     </>
   );
 }
+

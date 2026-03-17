@@ -1,13 +1,12 @@
 ﻿import { memo, useCallback, useState } from "react";
 import PointDetailsPanelMobile from "./PointDetailsPanelMobile";
-import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { setOpen } from "../store/mapSlice";
-import { selectOpen, selectSelectedPoint } from "../store/selectors";
+import { useMapValue, useSelectedPoint } from "../state/mapHooks";
+import { setOpen } from "../state/mapActions";
 
 const MAX_REVIEW_TAGS = Number(import.meta.env.VITE_MAX_REVIEW_TAGS);
 
 function PointDetailsContent() {
-  const selected = useAppSelector(selectSelectedPoint);
+  const selected = useSelectedPoint();
   const [reviewTagsExtended, setReviewTagsExtended] = useState(false);
 
   const toggleReviewTags = useCallback(() => {
@@ -102,12 +101,11 @@ function PointDetailsContent() {
 }
 
 function PointDetailsPanel() {
-  const dispatch = useAppDispatch();
-  const open = useAppSelector(selectOpen);
+  const open = useMapValue("open");
 
   const handleClose = useCallback(() => {
-    dispatch(setOpen(false));
-  }, [dispatch]);
+    setOpen(false);
+  }, []);
 
   return (
     <>

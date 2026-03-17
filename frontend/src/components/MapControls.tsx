@@ -1,15 +1,13 @@
 ﻿import type { LimitChoice } from "../types";
 import { LimitChoices } from "../constants";
 import { memo } from "react";
-import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { selectCustomLimit, selectLimitChoice, selectPoints } from "../store/selectors";
-import { setCustomLimit, setLimitChoice } from "../store/mapSlice";
+import { useMapValue } from "../state/mapHooks";
+import { setCustomLimit, setLimitChoice } from "../state/mapActions";
 
 function MapControls() {
-  const dispatch = useAppDispatch();
-  const limitChoice = useAppSelector(selectLimitChoice);
-  const customLimit = useAppSelector(selectCustomLimit);
-  const pointsCount = useAppSelector(selectPoints).length;
+  const limitChoice = useMapValue("limitChoice");
+  const customLimit = useMapValue("customLimit");
+  const pointsCount = useMapValue("points").length;
 
   return (
     <div className="border-b border-white/10 px-4 py-3 flex flex-wrap items-center gap-4">
@@ -18,7 +16,7 @@ function MapControls() {
         <select
           className="text-sm md:text-base bg-zinc-950 border border-white/15 rounded px-3 py-2"
           value={limitChoice}
-          onChange={(e) => dispatch(setLimitChoice(e.target.value as LimitChoice))}
+          onChange={(e) => setLimitChoice(e.target.value as LimitChoice)}
         >
           {Object.entries(LimitChoices).map(([key, value]) => (
             <option key={key} value={key}>
@@ -38,7 +36,7 @@ function MapControls() {
             min={1}
             placeholder="e.g. 222"
             value={customLimit}
-            onChange={(e) => dispatch(setCustomLimit(e.target.value))}
+            onChange={(e) => setCustomLimit(e.target.value)}
           />
         </label>
       ) : null}
