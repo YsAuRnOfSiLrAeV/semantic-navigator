@@ -1,8 +1,9 @@
-import { searchSemanticPoints } from "../api/api";
+import { navigatorApi } from "../api/apiClient";
 import type { LimitChoice, TravelPoint } from "../types";
 import { initialMapState, mapEngine } from "./mapEngine";
 
 const SEMANTIC_TOP_K = Number(import.meta.env.VITE_SEMANTIC_TOP_K ?? "30");
+
 
 function resolveCurrentLimit(): number | undefined {
   const limitChoice = mapEngine.getCurrentValue("limitChoice");
@@ -83,7 +84,7 @@ export async function runSemanticSearch() {
 
     const limit = resolveCurrentLimit();
 
-    const response = await searchSemanticPoints(query, {
+    const response = await navigatorApi.searchSemantic(query, {
       topK: SEMANTIC_TOP_K,
       limit,
     });
@@ -100,4 +101,18 @@ export async function runSemanticSearch() {
 
 export function resetMapState() {
   mapEngine.updateTotalValue(() => ({ ...initialMapState }));
+}
+
+export async function loadPoints(limit: number | undefined, signal: AbortSignal) {
+  try {
+    setLoading(true);
+    setError(null);
+    const data = await navigatorApi.fetchPoints(limit, signal);
+    setPoints(data);
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") return;
+    setError(err instanceof Error ? err.message : "Unknown error");
+  } finally {
+    setLoading(false);
+  }
 }

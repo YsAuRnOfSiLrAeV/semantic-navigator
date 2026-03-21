@@ -43,3 +43,5 @@ frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/pnpm-debug.log*
 frontend/lerna-debug.log*
+
+frontend/ARCHITECTURE_REVIEW_RESULTS.md

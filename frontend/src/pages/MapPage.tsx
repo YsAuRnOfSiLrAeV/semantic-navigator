@@ -1,62 +1,10 @@
-﻿import { useEffect } from "react";
-import { fetchPoints } from "../api/api";
-import { MapControls, MapPlot, PointDetailsPanel } from "../components";
-import { useMapValue } from "../state/mapHooks";
-import { setError, setLoading, setPoints } from "../state/mapActions";
-
-
-const DEBOUNCE_MS = Number(import.meta.env.VITE_LIMIT_INPUT_DEBOUNCE_MS);
+﻿import { MapControls, MapPlot, PointDetailsPanel } from "../components";
+import { useMapValue, usePointsLoader } from "../state/mapHooks";
 
 export default function MapPage() {
+  usePointsLoader();
   const loading = useMapValue("loading");
   const error = useMapValue("error");
-  const limitChoice = useMapValue("limitChoice");
-  const customLimit = useMapValue("customLimit");
-
-  useEffect(() => {
-    const controller = new AbortController();
-    let timeoutId: number | null = null;
-
-    const run = async (limit: number | undefined) => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await fetchPoints(limit, controller.signal);
-        setPoints(data);
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") {
-          return;
-        }
-
-        setError(error instanceof Error ? error.message : "Unknown error");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (limitChoice === "custom") {
-      timeoutId = window.setTimeout(() => {
-        const parsed = Number(customLimit);
-
-        if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 1) {
-          setError("Custom limit must be a positive integer.");
-          return;
-        }
-
-        void run(parsed);
-      }, DEBOUNCE_MS);
-    } else {
-      void run(Number(limitChoice));
-    }
-
-    return () => {
-      controller.abort();
-
-      if (timeoutId !== null) {
-        window.clearTimeout(timeoutId);
-      }
-    };
-  }, [limitChoice, customLimit]);
 
   return (
     <>

@@ -1,9 +1,25 @@
-﻿import { memo, useCallback, useState } from "react";
+﻿import { memo, ReactNode, useCallback, useState } from "react";
 import PointDetailsPanelMobile from "./PointDetailsPanelMobile";
 import { useMapValue, useSelectedPoint } from "../state/mapHooks";
 import { setOpen } from "../state/mapActions";
 
 const MAX_REVIEW_TAGS = Number(import.meta.env.VITE_MAX_REVIEW_TAGS);
+
+type TagsSectionProps = {
+  label: string;
+  emptyMessage: string;
+  hasItems: boolean;
+  children: ReactNode;
+};
+
+function TagsSection({ label, emptyMessage, hasItems, children }: TagsSectionProps) {
+  return (
+    <section className="space-y-2">
+      <div className="text-xs uppercase tracking-wide text-zinc-400">{label}</div>
+      {hasItems ? children : <div className="text-sm text-zinc-400">{emptyMessage}</div>}
+    </section>
+  );
+}
 
 function PointDetailsContent() {
   const selected = useSelectedPoint();
@@ -32,7 +48,9 @@ function PointDetailsContent() {
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-200">
-        <span className="rounded-full border border-white/20 px-2.5 py-1">{selected.destination || "Unknown destination"}</span>
+        <span className="rounded-full border border-white/20 px-2.5 py-1">
+          {selected.destination || "Unknown destination"}
+        </span>
         <span className="rounded-full border border-white/20 px-2.5 py-1">
           Rating: {Number.isFinite(selected.rating) ? selected.rating.toFixed(1) : "n/a"}
         </span>
@@ -44,45 +62,48 @@ function PointDetailsContent() {
         {selected.description || <span className="text-zinc-400">No description.</span>}
       </div>
 
-      <section className="space-y-2">
-        <div className="text-xs uppercase tracking-wide text-zinc-400">Categories</div>
-        {selected.categories.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {selected.categories.map((category, idx) => (
-              <span key={`${selected.id}-cat-${idx}`} className="rounded-md border border-white/15 bg-white/5 px-2 py-1 text-xs text-zinc-200">
-                {category}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <div className="text-sm text-zinc-400">No categories.</div>
-        )}
-      </section>
+      <TagsSection
+        label="Categories"
+        emptyMessage="No categories."
+        hasItems={selected.categories.length > 0}
+      >
+        <div className="flex flex-wrap gap-2">
+          {selected.categories.map((category, idx) => (
+            <span
+              key={`${selected.id}-cat-${idx}`}
+              className="rounded-md border border-white/15 bg-white/5 px-2 py-1 text-xs text-zinc-200"
+            >
+              {category}
+            </span>
+          ))}
+        </div>
+      </TagsSection>
 
-      <section className="space-y-2">
-        <div className="text-xs uppercase tracking-wide text-zinc-400">Review Tags</div>
-        {selected.review_tags.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {visibleTags.map((tag, idx) => (
-              <span key={`${selected.id}-tag-${idx}`} className="rounded-md border border-white/15 px-2 py-1 text-xs text-zinc-300">
-                {tag}
-              </span>
-            ))}
-            {hasHiddenReviewTags ? (
-              <button
-                onClick={toggleReviewTags}
-                className={reviewTagsExtended
+      <TagsSection
+        label="Review Tags"
+        emptyMessage="No review tags."
+        hasItems={selected.review_tags.length > 0}
+      >
+        <div className="flex flex-wrap gap-2">
+          {visibleTags.map((tag, idx) => (
+            <span key={`${selected.id}-tag-${idx}`} className="rounded-md border border-white/15 px-2 py-1 text-xs text-zinc-300">
+              {tag}
+            </span>
+          ))}
+          {hasHiddenReviewTags ? (
+            <button
+              onClick={toggleReviewTags}
+              className={
+                reviewTagsExtended
                   ? "rounded-md border bg-[#c7d8e8] border-white/15 px-2 py-1 text-xs text-[#000000] hover:cursor-pointer"
-                  : "rounded-md border border-white/15 px-2 py-1 text-xs text-zinc-400 hover:cursor-pointer"}
-              >
-                {reviewTagsExtended ? "Show less" : `+${selected.review_tags.length - MAX_REVIEW_TAGS}`}
-              </button>
-            ) : null}
-          </div>
-        ) : (
-          <div className="text-sm text-zinc-400">No review tags.</div>
-        )}
-      </section>
+                  : "rounded-md border border-white/15 px-2 py-1 text-xs text-zinc-400 hover:cursor-pointer"
+              }
+            >
+              {reviewTagsExtended ? "Show less" : `+${selected.review_tags.length - MAX_REVIEW_TAGS}`}
+            </button>
+          ) : null}
+        </div>
+      </TagsSection>
 
       {externalLink ? (
         <a
