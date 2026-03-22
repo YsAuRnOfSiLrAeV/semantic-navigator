@@ -37,15 +37,15 @@ def post_semantic_search(
 
     points = request.app.state.points
     model = request.app.state.model
-    semantic_index = request.app.state.semantic_index
+    semantic_embeddings = request.app.state.semantic_embeddings
 
-    if not points or model is None or semantic_index is None:
-        raise HTTPException(status_code=503, detail="Semantic index not ready")
+    if not points or model is None or semantic_embeddings is None:
+        raise HTTPException(status_code=503, detail="Semantic embeddings not ready")
 
     results_raw = semantic_search(
         model=model,
         points=points,
-        index=semantic_index,
+        embeddings=semantic_embeddings,
         query=payload.query,
         top_k=payload.top_k,
         limit=payload.limit,

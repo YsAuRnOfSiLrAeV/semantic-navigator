@@ -10,56 +10,67 @@ from typing import Any
 from sentence_transformers import SentenceTransformer
 from umap import UMAP
 
-from app.services.ingest import load_attractions
-
 import numpy as np
 
 
-def to_csv(v):
+def _to_csv(v):
     if isinstance(v, list):
         return ", ".join(str(x) for x in v)
     return str(v or "")
 
 
-def to_text(v):
+def _to_text(v):
     return "" if v is None else str(v)
+
+
+def build_embeddings(
+    *,
+    model: SentenceTransformer,
+    rows: list[dict[str, Any]],
+) -> np.ndarray:
+    """
+    Build normalized float32 embeddings matrix from attraction rows.
+    """
+
+    if not rows:
+        return np.empty((0, 0), dtype=np.float32)
+
+    texts = [
+        (
+            "Name: " + _to_text(r.get("name", "")) + ".\n"
+            "Description: " + _to_text(r.get("description", "")) + ".\n"
+            "Categories: " + _to_csv(r.get("categories", "")) + ".\n"
+            "Review tags: " + _to_csv(r.get("review_tags", "")) + ".\n"
+            "Destination: " + _to_text(r.get("destination", "")) + ".\n"
+            "Rating: " + _to_text(r.get("rating", ""))
+        ).strip()
+        for r in rows
+    ]
+
+    return np.asarray(
+        model.encode(
+            texts,
+            show_progress_bar=True,
+            normalize_embeddings=True,
+        ),
+        dtype=np.float32,
+    )
 
 
 def build_points(
     *,  # keyword-only arguments not to mess with positional arguments
-    model: SentenceTransformer,
-    limit: int = 10500,
-    use_cache: bool = True,
-    force_download: bool = False,
+    rows: list[dict[str, Any]],
+    embeddings: np.ndarray,
     seed: int = 42,
     umap_n_neighbors: int = 10,
     umap_min_dist: float = 0.5,
 ) -> list[dict[str, Any]]:
     """
-    Loads attractions rows via load_attractions(), embeds headlines, reduces to 2D with UMAP,
-    and returns points with x/y coordinates for the frontend.
+    Build 2D clustered map points from rows and precomputed embeddings.
     """
-    rows = load_attractions(limit=limit, use_cache=use_cache, force_download=force_download, seed=seed)
-    if not rows:
+
+    if not rows or embeddings.size == 0:
         return []
-
-    texts = [
-        ("Name: " + to_text(r.get("name", "")) + ".\n" +
-        "Description: " + to_text(r.get("description", "")) + ".\n" +
-        "Categories: " + to_csv(r.get("categories", "")) + ".\n" +
-        "Review tags: : " + to_csv(r.get("review_tags", "")) + ".\n" +
-        "Destination: " + to_text(r.get("destination", "")) + ".\n" +
-        "Rating: " + to_text(r.get("rating", ""))
-        ).strip()
-        for r in rows
-    ]
-
-    # takes a list of headlines and short descriptions, returns a matrix of embeddings
-    embeddings = model.encode(
-        texts,
-        show_progress_bar=True,
-        normalize_embeddings=True, # normalizes embeddings to unit length, good for cosine metric
-    )
 
     k = int(os.getenv("KMEANS_CLUSTERS", 30))
     k = min(k, len(rows))  # in case there are less points than clusters
@@ -103,63 +114,18 @@ def build_points(
     return points
 
 
-def build_semantic_index(
-    *,
-    model: SentenceTransformer,
-    points: list[dict[str, Any]],
-) -> dict[str, Any]:
-    """
-    Build in-memory semantic index from already prepared points.
-    Stores normalized embeddings matrix and id->index map.
-    """
-    if not points:
-        return {
-            "embeddings": np.empty((0, 0), dtype=np.float32),
-            "id_to_idx": {},
-            "dim": 0,
-        }
-
-    texts = [
-        (
-            "Name: " + to_text(p.get("name", "")) + ".\n"
-            "Description: " + to_text(p.get("description", "")) + ".\n"
-            "Categories: " + to_csv(p.get("categories", [])) + ".\n"
-            "Review tags: " + to_csv(p.get("review_tags", [])) + ".\n"
-            "Destination: " + to_text(p.get("destination", "")) + ".\n"
-            "Rating: " + to_text(p.get("rating", ""))
-        ).strip()
-        for p in points
-    ]
-
-    embeddings = model.encode(
-        texts,
-        show_progress_bar=True,
-        normalize_embeddings=True,
-    )
-    embeddings = np.asarray(embeddings, dtype=np.float32)
-
-    id_to_idx = {p["id"]: i for i, p in enumerate(points)}
-
-    return {
-        "embeddings": embeddings,
-        "id_to_idx": id_to_idx,
-        "dim": int(embeddings.shape[1]),
-    }
-
-
 def semantic_search(
     *,
     model: SentenceTransformer,
     points: list[dict[str, Any]],
-    index: dict[str, Any],
+    embeddings: np.ndarray,
     query: str,
     top_k: int = 30,
     limit: int | None = None,
 ) -> list[dict[str, Any]]:
     """
-    Returns top_k nearest points by cosine similarity in embedding space.
+    Return top-k nearest points by cosine similarity using precomputed embeddings.
     """
-    embeddings: np.ndarray = index["embeddings"]
 
     if embeddings.size == 0 or len(points) == 0:
         return []
@@ -171,21 +137,23 @@ def semantic_search(
     query_vec = model.encode([query], normalize_embeddings=True)
     query_vec = np.asarray(query_vec, dtype=np.float32)[0]
 
-    sims = embeddings[:n] @ query_vec  # cosine since vectors are normalized
+    # The dot product of each matrix vector with the Query vector. 
+    # Returns array of similarity scores by cosine 
+    similarity_scores = embeddings[:n] @ query_vec 
 
     k = min(top_k, n)
     if k <= 0:
         return []
 
-    top_idx_unsorted = np.argpartition(-sims, k - 1)[:k]
-    top_idx = top_idx_unsorted[np.argsort(-sims[top_idx_unsorted])]
+    top_idx_unsorted = np.argpartition(-similarity_scores, k - 1)[:k]
+    top_idx = top_idx_unsorted[np.argsort(-similarity_scores[top_idx_unsorted])]
 
     out: list[dict[str, Any]] = []
     for i in top_idx.tolist():
         out.append(
             {
                 "point": points[i],
-                "score": float(sims[i]),
+                "score": float(similarity_scores[i]),
             }
         )
     return out
