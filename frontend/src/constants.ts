@@ -1,8 +1,9 @@
 // connected to LimitChoice - the same values
 export const LimitChoices = {
-  "500": "500",
-  "1000": "1000",
-  "5000": "5000",
-  "10500": "10500",
+  "5": "5",
+  "10": "10",
+  "30": "30",
+  "50": "50",
+  "100": "100",
   "custom": "Custom...",
 }

@@ -2,10 +2,7 @@ import { navigatorApi } from "../api/apiClient";
 import type { LimitChoice, TravelPoint } from "../types";
 import { initialMapState, mapEngine } from "./mapEngine";
 
-const SEMANTIC_TOP_K = Number(import.meta.env.VITE_SEMANTIC_TOP_K ?? "30");
-
-
-function resolveCurrentLimit(): number | undefined {
+function resolveCurrentTopK(): number {
   const limitChoice = mapEngine.getCurrentValue("limitChoice");
 
   if (limitChoice === "custom") {
@@ -14,7 +11,7 @@ function resolveCurrentLimit(): number | undefined {
     if (Number.isFinite(parsed) && Number.isInteger(parsed) && parsed >= 1) {
       return parsed;
     }
-    return undefined;
+    return Number(import.meta.env.VITE_SEMANTIC_TOP_K ?? "30");
   }
 
   return Number(limitChoice);
@@ -70,6 +67,16 @@ export function setSemanticError(semanticError: string | null) {
   mapEngine.setValue("semanticError", semanticError);
 }
 
+function isSameAsLastExecutedSearch(normalizedSemanticQuery: string, resultLimit: number): boolean {
+  const lastExecutedSemanticQuery = mapEngine.getCurrentValue("lastExecutedSemanticQuery");
+  const lastExecutedResultLimit = mapEngine.getCurrentValue("lastExecutedResultLimit");
+
+  return (
+    normalizedSemanticQuery === lastExecutedSemanticQuery &&
+    resultLimit === lastExecutedResultLimit
+  );
+}
+
 export async function runSemanticSearch() {
   const query = mapEngine.getCurrentValue("semanticQuery").trim();
 
@@ -78,20 +85,28 @@ export async function runSemanticSearch() {
     return;
   }
 
+  const resultLimit = resolveCurrentTopK();
+  if (isSameAsLastExecutedSearch(query, resultLimit)) {
+    return;
+  }
+
   try {
     setSemanticLoading(true);
     setSemanticError(null);
 
-    const limit = resolveCurrentLimit();
-
     const response = await navigatorApi.searchSemantic(query, {
-      topK: SEMANTIC_TOP_K,
-      limit,
+      topK: resultLimit,
     });
 
     const points = response.results.map((item) => item.point);
     setPoints(points);
     setOpen(false);
+
+    mapEngine.updateTotalValue((prev) => ({
+      ...prev,
+      lastExecutedSemanticQuery: query,
+      lastExecutedResultLimit: resultLimit,
+    }));
   } catch (error) {
     setSemanticError(error instanceof Error ? error.message : "Semantic search failed");
   } finally {

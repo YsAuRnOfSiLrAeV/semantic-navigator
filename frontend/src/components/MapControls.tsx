@@ -1,6 +1,6 @@
 ﻿import type { LimitChoice } from "../types";
 import { LimitChoices } from "../constants";
-import { memo } from "react";
+import { FormEvent, memo, useCallback } from "react";
 import { useMapValue } from "../state/mapHooks";
 import { runSemanticSearch, setCustomLimit, setLimitChoice, setSemanticQuery } from "../state/mapActions";
 
@@ -13,11 +13,34 @@ function MapControls() {
   const semanticLoading = useMapValue("semanticLoading");
   const semanticError = useMapValue("semanticError");
 
+  const lastExecutedSemanticQuery = useMapValue("lastExecutedSemanticQuery");
+  const lastExecutedResultLimit = useMapValue("lastExecutedResultLimit");
+
+  const normalizedSemanticQuery = semanticQuery.trim();
+  const selectedResultLimit =
+    limitChoice === "custom" ? Number(customLimit) : Number(limitChoice);
+
+  const hasValidResultLimit =
+    Number.isFinite(selectedResultLimit) &&
+    Number.isInteger(selectedResultLimit) &&
+    selectedResultLimit >= 1;
+
+  const isAlreadyExecutedSearch =
+    normalizedSemanticQuery.length >= 3 &&
+    hasValidResultLimit &&
+    normalizedSemanticQuery === lastExecutedSemanticQuery &&
+    selectedResultLimit === lastExecutedResultLimit;
+
+  const handleSemanticSearchSubmit = useCallback((event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void runSemanticSearch();
+  }, []);
+
   return (
     <div className="border-b border-white/10 px-4 py-3">
       <div className="flex flex-wrap items-center gap-4">
         <label className="text-sm md:text-base text-zinc-300 flex items-center gap-3">
-          <span className="font-medium">Points</span>
+          <span className="font-medium">Results</span>
           <select
             className="text-sm md:text-base bg-zinc-950 border border-white/15 rounded px-3 py-2"
             value={limitChoice}
@@ -33,7 +56,7 @@ function MapControls() {
 
         {limitChoice === "custom" ? (
           <label className="text-sm md:text-base text-zinc-300 flex items-center gap-3">
-            <span className="font-medium">N</span>
+            <span className="font-medium">Top K</span>
             <input
               className="w-32 text-sm md:text-base bg-zinc-950 border border-white/15 rounded px-3 py-2"
               type="number"
@@ -50,7 +73,10 @@ function MapControls() {
           Showing {pointsCount} point{pointsCount === 1 ? "" : "s"}
         </div>
 
-        <div className="flex flex-1 min-w-[280px] items-center gap-2">
+        <form
+          className="flex flex-1 min-w-[280px] items-center gap-2"
+          onSubmit={handleSemanticSearchSubmit}
+        >
           <input
             className="flex-1 text-sm md:text-base bg-zinc-950 border border-white/15 rounded px-3 py-2"
             type="text"
@@ -63,11 +89,16 @@ function MapControls() {
             type="button"
             className="text-sm md:text-base bg-white/10 hover:bg-white/20 border border-white/15 rounded px-3 py-2 disabled:opacity-60"
             onClick={() => void runSemanticSearch()}
-            disabled={semanticLoading || semanticQuery.trim().length < 3}
+            disabled={
+              semanticLoading ||
+              normalizedSemanticQuery.length < 3 ||
+              !hasValidResultLimit ||
+              isAlreadyExecutedSearch
+            }
           >
             {semanticLoading ? "Searching..." : "Find closest"}
           </button>
-        </div>
+        </form>
       </div>
 
       {semanticError ? (

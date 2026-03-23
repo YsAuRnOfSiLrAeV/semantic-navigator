@@ -1,4 +1,4 @@
-export type LimitChoice = "500" | "1000" | "5000" | "10500" | "custom";
+export type LimitChoice = "5" | "10" | "30" | "50" | "100" | "custom";
 
 export interface TravelPoint {
   id: string;

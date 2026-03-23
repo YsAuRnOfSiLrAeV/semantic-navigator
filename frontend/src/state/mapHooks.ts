@@ -1,7 +1,7 @@
 import { useEngineMultipleValues, useEngineValue } from "@ysaurnofsilraev/state-manager/react";
 import { mapEngine, type MapState } from "./mapEngine";
 import { useEffect } from "react";
-import { loadPoints, setError } from "./mapActions";
+import { loadPoints, runSemanticSearch } from "./mapActions";
 
 const SELECTED_KEYS = ["points", "selectedId"] as const;
 const DEBOUNCE_MS = Number(import.meta.env.VITE_LIMIT_INPUT_DEBOUNCE_MS);
@@ -19,29 +19,32 @@ export function useSelectedPoint() {
 }
 
 export function usePointsLoader() {
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadPoints(undefined, controller.signal);
+    return () => controller.abort();
+  }, []);
+}
+
+export function useSemanticAutoRefresh() {
   const limitChoice = useMapValue("limitChoice");
   const customLimit = useMapValue("customLimit");
 
   useEffect(() => {
-    const controller = new AbortController();
-    let timeoutId: number | null = null;
+    const q = mapEngine.getCurrentValue("semanticQuery").trim();
+    if (q.length < 3) return;
 
     if (limitChoice === "custom") {
-      timeoutId = window.setTimeout(() => {
-        const parsed = Number(customLimit);
-        if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 1) {
-          setError("Custom limit must be a positive integer.");
-          return;
-        }
-        void loadPoints(parsed, controller.signal);
+      const parsed = Number(customLimit);
+      if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 1) return;
+
+      const id = window.setTimeout(() => {
+        void runSemanticSearch();
       }, DEBOUNCE_MS);
-    } else {
-      void loadPoints(Number(limitChoice), controller.signal);
+
+      return () => window.clearTimeout(id);
     }
 
-    return () => {
-      controller.abort();
-      if (timeoutId !== null) window.clearTimeout(timeoutId);
-    };
+    void runSemanticSearch();
   }, [limitChoice, customLimit]);
 }
