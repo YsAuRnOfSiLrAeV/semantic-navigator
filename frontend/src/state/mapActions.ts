@@ -98,6 +98,7 @@ export async function runSemanticSearch() {
       topK: resultLimit,
     });
 
+    setTotalPlacesCount(response.total_candidates);
     const points = response.results.map((item) => item.point);
     setPoints(points);
     setOpen(false);
@@ -123,6 +124,7 @@ export async function loadPoints(limit: number | undefined, signal: AbortSignal)
     setLoading(true);
     setError(null);
     const data = await navigatorApi.fetchPoints(limit, signal);
+    setTotalPlacesCount(data.length);
     setPoints(data);
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") return;
@@ -130,4 +132,8 @@ export async function loadPoints(limit: number | undefined, signal: AbortSignal)
   } finally {
     setLoading(false);
   }
+}
+
+export function setTotalPlacesCount(totalPlacesCount: number | null) {
+  mapEngine.setValue("totalPlacesCount", totalPlacesCount);
 }

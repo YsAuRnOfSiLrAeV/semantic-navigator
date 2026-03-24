@@ -16,6 +16,8 @@ export type MapState = {
 
   lastExecutedSemanticQuery: string;
   lastExecutedResultLimit: number | null;
+
+  totalPlacesCount: number | null;
 };
 
 const DEFAULT_LIMIT = import.meta.env.VITE_DEFAULT_POINTS_LIMIT as LimitChoice;
@@ -35,6 +37,7 @@ export const initialMapState: MapState = {
 
   lastExecutedSemanticQuery: "",
   lastExecutedResultLimit: null,
+  totalPlacesCount: null,
 };
 
 export const mapEngine = createEngine<MapState>(initialMapState);

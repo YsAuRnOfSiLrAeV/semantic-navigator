@@ -21,7 +21,7 @@ class Point(BaseModel):
 
 class SemanticSearchRequest(BaseModel):
     query: str = Field(..., min_length=3, max_length=2000)
-    top_k: int = Field(default=30, ge=1, le=100)
+    top_k: int = Field(default=30, ge=1, le=10500)
     limit: int | None = Field(default=None, ge=1, le=10500)
 
 

@@ -1,7 +1,7 @@
-﻿import { memo, ReactNode, useCallback, useState } from "react";
+﻿import { memo, ReactNode, useCallback, useMemo, useState } from "react";
 import PointDetailsPanelMobile from "./PointDetailsPanelMobile";
 import { useMapValue, useSelectedPoint } from "../state/mapHooks";
-import { setOpen } from "../state/mapActions";
+import { setOpen, setSelectedId } from "../state/mapActions";
 
 const MAX_REVIEW_TAGS = Number(import.meta.env.VITE_MAX_REVIEW_TAGS);
 
@@ -22,12 +22,34 @@ function TagsSection({ label, emptyMessage, hasItems, children }: TagsSectionPro
 }
 
 function PointDetailsContent() {
+  const points = useMapValue("points");
   const selected = useSelectedPoint();
   const [reviewTagsExtended, setReviewTagsExtended] = useState(false);
 
   const toggleReviewTags = useCallback(() => {
     setReviewTagsExtended((prev) => !prev);
   }, []);
+
+  const selectedId = selected?.id ?? null;
+
+  const selectedIndex = useMemo(() => {
+    if (!selectedId) return -1;
+    return points.findIndex((point) => point.id === selectedId);
+  }, [points, selectedId]);
+
+  const hasPointsForNavigation = points.length > 1 && selectedIndex >= 0;
+
+  const handlePrevious = useCallback(() => {
+    if (!hasPointsForNavigation) return;
+    const previousIndex = (selectedIndex - 1 + points.length) % points.length;
+    setSelectedId(points[previousIndex].id);
+  }, [hasPointsForNavigation, points, selectedIndex]);
+
+  const handleNext = useCallback(() => {
+    if (!hasPointsForNavigation) return;
+    const nextIndex = (selectedIndex + 1) % points.length;
+    setSelectedId(points[nextIndex].id);
+  }, [hasPointsForNavigation, points, selectedIndex]);
 
   if (!selected) {
     return <div className="text-sm text-zinc-400">Click a point to see details.</div>;
@@ -41,11 +63,44 @@ function PointDetailsContent() {
 
   return (
     <div className="space-y-5">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={handlePrevious}
+          disabled={!hasPointsForNavigation}
+          className="flex-1 rounded-md border border-white/20 bg-white/5 px-3 py-2 text-xs md:text-sm font-medium text-zinc-100 hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Previous
+        </button>
+
+        <button
+          type="button"
+          onClick={handleNext}
+          disabled={!hasPointsForNavigation}
+          className="flex-1 rounded-md border border-white/20 bg-white/5 px-3 py-2 text-xs md:text-sm font-medium text-zinc-100 hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Next
+        </button>
+      </div>
+
       {selected.picture ? (
         <div className="overflow-hidden rounded-lg border border-white/10 bg-white/5">
           <img src={selected.picture} alt={selected.name} className="h-44 w-full object-cover" loading="lazy" />
         </div>
       ) : null}
+
+      {externalLink ? (
+        <a
+          className="inline-flex rounded border border-white/20 px-3 py-2 text-sm text-zinc-100 hover:border-white/35"
+          href={externalLink}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Open source
+        </a>
+      ) : (
+        <div className="text-sm text-zinc-400">No external link.</div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-200">
         <span className="rounded-full border border-white/20 px-2.5 py-1">
@@ -86,7 +141,10 @@ function PointDetailsContent() {
       >
         <div className="flex flex-wrap gap-2">
           {visibleTags.map((tag, idx) => (
-            <span key={`${selected.id}-tag-${idx}`} className="rounded-md border border-white/15 px-2 py-1 text-xs text-zinc-300">
+            <span
+              key={`${selected.id}-tag-${idx}`}
+              className="rounded-md border border-white/15 px-2 py-1 text-xs text-zinc-300"
+            >
               {tag}
             </span>
           ))}
@@ -104,19 +162,6 @@ function PointDetailsContent() {
           ) : null}
         </div>
       </TagsSection>
-
-      {externalLink ? (
-        <a
-          className="inline-flex rounded border border-white/20 px-3 py-2 text-sm text-zinc-100 hover:border-white/35"
-          href={externalLink}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Open source
-        </a>
-      ) : (
-        <div className="text-sm text-zinc-400">No external link.</div>
-      )}
     </div>
   );
 }

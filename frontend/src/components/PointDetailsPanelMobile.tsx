@@ -7,7 +7,6 @@ type Props = {
 };
 
 export default function PointDetailsPanelMobile({ open, onClose, children }: Props) {
-  // This component is the mobile/tablet drawer.
   return (
     <div className={`lg:hidden ${open ? "" : "pointer-events-none"}`}>
       <div

@@ -13,6 +13,8 @@ function MapControls() {
   const semanticLoading = useMapValue("semanticLoading");
   const semanticError = useMapValue("semanticError");
 
+  const totalPlacesCount = useMapValue("totalPlacesCount");
+
   const lastExecutedSemanticQuery = useMapValue("lastExecutedSemanticQuery");
   const lastExecutedResultLimit = useMapValue("lastExecutedResultLimit");
 
@@ -70,11 +72,11 @@ function MapControls() {
         ) : null}
 
         <div className="text-sm md:text-base text-zinc-400">
-          Showing {pointsCount} point{pointsCount === 1 ? "" : "s"}
+          Showing {pointsCount.toLocaleString()} of {(totalPlacesCount ?? pointsCount).toLocaleString()} places
         </div>
 
         <form
-          className="flex flex-1 min-w-[280px] items-center gap-2"
+          className="flex flex-1 min-w-70 items-center gap-2"
           onSubmit={handleSemanticSearchSubmit}
         >
           <input
