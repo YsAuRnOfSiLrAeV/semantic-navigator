@@ -77,30 +77,23 @@ function isSameAsLastExecutedSearch(normalizedSemanticQuery: string, resultLimit
   );
 }
 
-export async function runSemanticSearch() {
-  const query = mapEngine.getCurrentValue("semanticQuery").trim();
-
+async function executeSemanticSearch(query: string) {
   if (query.length < 3) {
     setSemanticError("Please enter at least 3 characters.");
     return;
   }
 
   const resultLimit = resolveCurrentTopK();
-  if (isSameAsLastExecutedSearch(query, resultLimit)) {
-    return;
-  }
+  if (isSameAsLastExecutedSearch(query, resultLimit)) return;
 
   try {
     setSemanticLoading(true);
     setSemanticError(null);
 
-    const response = await navigatorApi.searchSemantic(query, {
-      topK: resultLimit,
-    });
+    const response = await navigatorApi.searchSemantic(query, { topK: resultLimit });
 
     setTotalPlacesCount(response.total_candidates);
-    const points = response.results.map((item) => item.point);
-    setPoints(points);
+    setPoints(response.results.map((item) => item.point));
     setOpen(false);
 
     mapEngine.updateTotalValue((prev) => ({
@@ -113,6 +106,17 @@ export async function runSemanticSearch() {
   } finally {
     setSemanticLoading(false);
   }
+}
+
+export async function runSemanticSearch() {
+  const query = mapEngine.getCurrentValue("semanticQuery").trim();
+  await executeSemanticSearch(query);
+}
+
+export async function rerunLastExecutedSemanticSearch() {
+  const query = mapEngine.getCurrentValue("lastExecutedSemanticQuery").trim();
+  if (query.length < 3) return;
+  await executeSemanticSearch(query);
 }
 
 export function resetMapState() {

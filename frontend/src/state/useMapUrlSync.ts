@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { mapEngine } from "./mapEngine";
 import {
@@ -9,18 +9,39 @@ import {
   setSemanticQuery,
 } from "./mapActions";
 import { useMapValue } from "./mapHooks";
-import { buildMapUrlState, parseMapUrlState } from "./mapUrlParams";
+import { parseMapUrlState } from "./mapUrlParams";
+import type { LimitChoice } from "../types";
+
+function resolveResultLimit(limitChoice: LimitChoice, customLimit: string): number | null {
+  const parsedLimit =
+    limitChoice === "custom" ? Number(customLimit) : Number(limitChoice);
+
+  if (
+    Number.isFinite(parsedLimit) &&
+    Number.isInteger(parsedLimit) &&
+    parsedLimit >= 1
+  ) {
+    return parsedLimit;
+  }
+
+  return null;
+}
 
 export function useMapUrlSync() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const isInternalUrlUpdateRef = useRef(false);
 
-  const semanticQuery = useMapValue("semanticQuery");
-  const limitChoice = useMapValue("limitChoice");
-  const customLimit = useMapValue("customLimit");
   const selectedPointId = useMapValue("selectedId");
+  const lastExecutedSemanticQuery = useMapValue("lastExecutedSemanticQuery");
+  const lastExecutedResultLimit = useMapValue("lastExecutedResultLimit");
 
   // URL -> state
   useEffect(() => {
+    if (isInternalUrlUpdateRef.current) {
+      isInternalUrlUpdateRef.current = false;
+      return;
+    }
+
     const parsedMapUrlState = parseMapUrlState(searchParams);
 
     const currentSemanticQuery = mapEngine.getCurrentValue("semanticQuery");
@@ -28,23 +49,22 @@ export function useMapUrlSync() {
     const currentCustomLimit = mapEngine.getCurrentValue("customLimit");
     const currentSelectedPointId = mapEngine.getCurrentValue("selectedId");
 
-    let semanticQueryChanged = false;
-    let resultLimitChanged = false;
+    const currentLastExecutedSemanticQuery =
+      mapEngine.getCurrentValue("lastExecutedSemanticQuery");
+    const currentLastExecutedResultLimit =
+      mapEngine.getCurrentValue("lastExecutedResultLimit");
 
     if (parsedMapUrlState.semanticQuery !== currentSemanticQuery) {
       setSemanticQuery(parsedMapUrlState.semanticQuery);
-      semanticQueryChanged = true;
     }
 
     if (parsedMapUrlState.limitChoice !== currentLimitChoice) {
       setLimitChoice(parsedMapUrlState.limitChoice);
-      resultLimitChanged = true;
     }
 
     if (parsedMapUrlState.limitChoice === "custom") {
       if (parsedMapUrlState.customLimit !== currentCustomLimit) {
         setCustomLimit(parsedMapUrlState.customLimit);
-        resultLimitChanged = true;
       }
     } else if (currentCustomLimit !== "") {
       setCustomLimit("");
@@ -54,29 +74,55 @@ export function useMapUrlSync() {
       setSelectedId(parsedMapUrlState.selectedPointId);
     }
 
-    if (
-      parsedMapUrlState.semanticQuery.length >= 3 &&
-      semanticQueryChanged &&
-      !resultLimitChanged
-    ) {
+    const parsedResultLimit = resolveResultLimit(
+      parsedMapUrlState.limitChoice,
+      parsedMapUrlState.customLimit
+    );
+    const normalizedSemanticQueryFromUrl = parsedMapUrlState.semanticQuery.trim();
+
+    const shouldRunSemanticSearchFromUrl =
+      normalizedSemanticQueryFromUrl.length >= 3 &&
+      parsedResultLimit !== null &&
+      (
+        normalizedSemanticQueryFromUrl !== currentLastExecutedSemanticQuery ||
+        parsedResultLimit !== currentLastExecutedResultLimit
+      );
+
+    if (shouldRunSemanticSearchFromUrl) {
       void runSemanticSearch();
     }
   }, [searchParams]);
 
   // state -> URL
   useEffect(() => {
-    const nextSearchParams = buildMapUrlState({
-      semanticQuery,
-      limitChoice,
-      customLimit,
-      selectedPointId,
-    });
+    const nextSearchParams = new URLSearchParams();
 
-    const previousSearchParamsString = searchParams.toString();
-    const nextSearchParamsString = nextSearchParams.toString();
+    const normalizedExecutedSemanticQuery = lastExecutedSemanticQuery.trim();
+    if (normalizedExecutedSemanticQuery.length > 0) {
+      nextSearchParams.set("semanticQuery", normalizedExecutedSemanticQuery);
+    }
 
-    if (previousSearchParamsString !== nextSearchParamsString) {
+    if (
+      lastExecutedResultLimit !== null &&
+      Number.isInteger(lastExecutedResultLimit) &&
+      lastExecutedResultLimit >= 1
+    ) {
+      nextSearchParams.set("resultLimit", String(lastExecutedResultLimit));
+    }
+
+    if (selectedPointId) {
+      nextSearchParams.set("selectedPointId", selectedPointId);
+    }
+
+    if (searchParams.toString() !== nextSearchParams.toString()) {
+      isInternalUrlUpdateRef.current = true;
       setSearchParams(nextSearchParams, { replace: true });
     }
-  }, [semanticQuery, limitChoice, customLimit, selectedPointId, searchParams, setSearchParams]);
+  }, [
+    lastExecutedSemanticQuery,
+    lastExecutedResultLimit,
+    selectedPointId,
+    searchParams,
+    setSearchParams,
+  ]);
 }
