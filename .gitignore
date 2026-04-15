@@ -44,4 +44,9 @@ frontend/yarn-debug.log*
 frontend/pnpm-debug.log*
 frontend/lerna-debug.log*
 
+#frontend test reports
+frontend/playwright-report/
+frontend/test-results/
+frontend/blob-report/
+
 ARCHITECTURE_REVIEW_RESULTS.md
