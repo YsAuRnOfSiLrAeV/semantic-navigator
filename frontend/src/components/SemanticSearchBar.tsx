@@ -1,6 +1,7 @@
 import { FormEvent, memo, useCallback } from "react";
 import { useMapValue } from "../state/mapHooks";
 import { runSemanticSearch, setSemanticQuery } from "../state/mapActions";
+import { resolveResultLimit } from "../state/mapUrlParams";
 
 function SemanticSearchBar() {
   const semanticQuery = useMapValue("semanticQuery");
@@ -13,13 +14,9 @@ function SemanticSearchBar() {
   const lastExecutedResultLimit = useMapValue("lastExecutedResultLimit");
 
   const normalizedSemanticQuery = semanticQuery.trim();
-  const selectedResultLimit =
-    limitChoice === "custom" ? Number(customLimit) : Number(limitChoice);
-
-  const hasValidResultLimit =
-    Number.isFinite(selectedResultLimit) &&
-    Number.isInteger(selectedResultLimit) &&
-    selectedResultLimit >= 1;
+  
+  const selectedResultLimit = resolveResultLimit(limitChoice, customLimit);
+  const hasValidResultLimit = selectedResultLimit !== null;
 
   const isAlreadyExecutedSearch =
     normalizedSemanticQuery.length >= 3 &&

@@ -9,23 +9,7 @@ import {
   setSemanticQuery,
 } from "./mapActions";
 import { useMapValue } from "./mapHooks";
-import { parseMapUrlState } from "./mapUrlParams";
-import type { LimitChoice } from "../types";
-
-function resolveResultLimit(limitChoice: LimitChoice, customLimit: string): number | null {
-  const parsedLimit =
-    limitChoice === "custom" ? Number(customLimit) : Number(limitChoice);
-
-  if (
-    Number.isFinite(parsedLimit) &&
-    Number.isInteger(parsedLimit) &&
-    parsedLimit >= 1
-  ) {
-    return parsedLimit;
-  }
-
-  return null;
-}
+import { parseMapUrlState, resolveResultLimit } from "./mapUrlParams";
 
 export function useMapUrlSync() {
   const [searchParams, setSearchParams] = useSearchParams();

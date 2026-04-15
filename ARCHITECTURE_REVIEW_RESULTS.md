@@ -1,44 +1,48 @@
 # Architecture Review Results
 
-> Analyzed on: 2026-03-23
+> Analyzed on: 2026-04-15
 > Project: semantic-navigator (frontend)
-> Total components analyzed: 9 (Navbar, MapViewer, MapPlot, MapControls, PointDetailsPanel, PointDetailsContent, TagsSection, PointDetailsPanelMobile + 3 pages)
-> Issues found: 4
+> Total components analyzed: 14 (App, RootLayout, HomePage, AboutPage, MapPage, Navbar, MapViewer, MapPlot, MapControls, ResultLimitSelector, SemanticSearchBar, PointDetailsPanel / PointDetailsPanelMobile / PointDetailsContent)
+> Issues found: 6
 
 ## Summary
 
-The project is well-architected for its scope. The API abstraction layer (`SemanticNavigatorApi` class), state management separation (engine / actions / hooks), and URL sync isolation are all solid. The main finding is a router-level layout pattern (`<Outlet />`) that makes pages incomplete fragments and ties the shell to React Router — fixing this unlocks self-contained, framework-agnostic pages. Two lower-severity SLA concerns exist: `MapPage` mixes domain components with a raw grid wrapper, and `MapControls` handles two distinct concerns in a single component.
+The architecture is fundamentally sound. The API abstraction layer is exemplary — `SemanticNavigatorApi` is a proper class with constructor injection, `mapActions.ts` is its only consumer, and no hook or component ever touches `fetch` directly. The engine → actions → hooks → components layering is clean throughout. Since the previous review, the new semantic search UI (`SemanticSearchBar`, `ResultLimitSelector`) introduced two issues worth addressing: `SemanticSearchBar` reads seven state keys to compute a "already executed" guard that `mapActions.ts` already enforces, and the limit-resolution validation is now written in three separate places. Three lower-priority items from the previous review remain open.
 
 ---
 
 ## Issues
 
-### ISSUE-1: Layout is coupled to the router via `<Outlet />`
+### ISSUE-01: Layout lives at the router level instead of inside each page
 
 **Severity**: Medium
-**Principle**: Missing Layout
-**Location**: `frontend/src/App.tsx`, `frontend/src/layouts/RootLayout.tsx`
+**Principle**: Missing Layout / App Shell
+**Location**: `src/App.tsx`, `src/layouts/RootLayout.tsx`
 
-`RootLayout` uses React Router's `<Outlet />` as its content slot, and `App.tsx` wraps all routes inside `<Route element={<RootLayout />}>`. This makes every page an incomplete fragment — a page only renders correctly when nested inside a React Router outlet. If routing changes (e.g. moving to Next.js, or adding an unauthenticated route that skips the navbar), pages can't control their own shell, and layout changes require touching the router.
+`RootLayout` is mounted as a router wrapper using `<Outlet />`, which makes pages incomplete fragments that only render correctly when nested inside that specific route configuration. If routing is restructured, or if a page needs to customise the shell (e.g., different padding or a sidebar), the layout is locked at the router level with no clean escape hatch.
 
 #### Current (Bad)
 
 ```tsx
-// App.tsx — layout is a router concern
-<Routes>
-  <Route element={<RootLayout />}>
-    <Route path="/" element={<HomePage />} />
-    <Route path="/map" element={<MapPage />} />
-    <Route path="/about" element={<AboutPage />} />
-  </Route>
-</Routes>
+// App.tsx — layout is coupled to React Router's Outlet
+export default function App() {
+  return (
+    <Routes>
+      <Route element={<RootLayout />}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/map" element={<MapPage />} />
+        <Route path="/about" element={<AboutPage />} />
+      </Route>
+    </Routes>
+  );
+}
 
-// RootLayout.tsx — coupled to React Router
+// RootLayout.tsx — pages rendered as anonymous Outlet content
 export default function RootLayout() {
   return (
     <div className="h-dvh overflow-hidden bg-zinc-950 text-zinc-100 flex flex-col">
       <Navbar />
-      <Outlet />  {/* pages are slots, not self-contained */}
+      <Outlet />
     </div>
   );
 }
@@ -47,8 +51,19 @@ export default function RootLayout() {
 #### Recommended (Good)
 
 ```tsx
-// components/AppLayout.tsx — no router dependency
-export default function AppLayout({ children }: { children: ReactNode }) {
+// App.tsx — router handles only routing
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/map" element={<MapPage />} />
+      <Route path="/about" element={<AboutPage />} />
+    </Routes>
+  );
+}
+
+// layouts/RootLayout.tsx — accepts children, no router dependency
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <div className="h-dvh overflow-hidden bg-zinc-950 text-zinc-100 flex flex-col">
       <Navbar />
@@ -57,259 +72,279 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   );
 }
 
-// pages/MapPage.tsx — self-contained, complete page
+// pages/MapPage.tsx — self-contained, renders its own shell
 export default function MapPage() {
   useMapUrlSync();
   usePointsLoader();
   useSemanticAutoRefresh();
   return (
-    <AppLayout>
+    <RootLayout>
       <MapControls />
-      {/* ... rest of page */}
-    </AppLayout>
+      <MapContentArea />
+    </RootLayout>
   );
 }
-
-// App.tsx — routes are flat, no layout nesting
-<Routes>
-  <Route path="/" element={<HomePage />} />
-  <Route path="/map" element={<MapPage />} />
-  <Route path="/about" element={<AboutPage />} />
-</Routes>
 ```
 
-**Why this is better**: Each page is a complete, self-contained unit. Reading a page file shows everything it renders including its shell, and pages can individually opt out of or customize the layout without touching the router.
+**Why this is better**: Each page is a complete, self-contained unit. Reading `MapPage.tsx` shows everything it renders, including its shell. Routing changes never affect page layout, and per-page shell customisation becomes a simple prop.
 
 ---
 
-### ISSUE-2: `MapPage` mixes domain components with raw layout HTML
+### ISSUE-02: `SemanticSearchBar` reads seven state keys to duplicate a guard already in the action layer
 
-**Severity**: Low
-**Principle**: SLA Violation
-**Location**: `frontend/src/pages/MapPage.tsx`
+**Severity**: Medium
+**Principle**: Unclear Data Flow / Code Duplication
+**Location**: `src/components/SemanticSearchBar.tsx`, `src/state/mapActions.ts`
 
-`MapPage` composes named domain components (`MapControls`, `MapViewer`, `PointDetailsPanel`) at a high abstraction level, but the viewer/panel split is implemented as three layers of unnamed divs directly in the page. You can't describe what `MapPage` renders in a single sentence using only named children — the responsive grid wrapper is anonymous.
+`SemanticSearchBar` reads `limitChoice`, `customLimit`, `lastExecutedSemanticQuery`, and `lastExecutedResultLimit` solely to compute `isAlreadyExecutedSearch` — which decides whether to disable the submit button. But `mapActions.ts` already enforces the same guard in `isSameAsLastExecutedSearch` before every API call, meaning a duplicate search is blocked twice: once in the UI and once at the action level. This forces the component to understand `lastExecutedResultLimit` (an internal search-deduplication detail) and to replicate the limit-resolution formula. Seven reactive state subscriptions in a form component is a maintenance burden.
 
 #### Current (Bad)
 
 ```tsx
-export default function MapPage() {
-  // ...hooks
-  return (
-    <>
-      <MapControls />
-      <div className="w-full flex-1 min-h-0">                            {/* unnamed */}
-        <div className="grid h-full grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px]">  {/* unnamed */}
-          <main className="min-w-0 border-white/10 lg:border-r flex flex-col min-h-0">
-            <div className="p-4 flex-1 min-h-0">                         {/* unnamed */}
-              <MapViewer />
-            </div>
-          </main>
-          <PointDetailsPanel />
-        </div>
-      </div>
-    </>
-  );
+// SemanticSearchBar.tsx — 7 state reads, duplicates action-layer logic
+const semanticQuery = useMapValue("semanticQuery");
+const semanticLoading = useMapValue("semanticLoading");
+const semanticError = useMapValue("semanticError");
+const limitChoice = useMapValue("limitChoice");                       // only for isAlreadyExecutedSearch
+const customLimit = useMapValue("customLimit");                       // only for isAlreadyExecutedSearch
+const lastExecutedSemanticQuery = useMapValue("lastExecutedSemanticQuery");  // only for isAlreadyExecutedSearch
+const lastExecutedResultLimit = useMapValue("lastExecutedResultLimit");      // only for isAlreadyExecutedSearch
+
+const selectedResultLimit =
+  limitChoice === "custom" ? Number(customLimit) : Number(limitChoice);  // duplicated from mapActions
+const isAlreadyExecutedSearch =
+  normalizedSemanticQuery === lastExecutedSemanticQuery &&
+  selectedResultLimit === lastExecutedResultLimit;                    // duplicates isSameAsLastExecutedSearch
+```
+
+#### Recommended (Good)
+
+Add a single derived selector to `mapHooks.ts`, then `SemanticSearchBar` only needs three keys:
+
+```tsx
+// state/mapHooks.ts — one new selector encapsulates the check
+const SEARCH_STALENESS_KEYS = [
+  "semanticQuery", "lastExecutedSemanticQuery",
+  "lastExecutedResultLimit", "limitChoice", "customLimit",
+] as const;
+
+export function useIsSearchAlreadyExecuted(): boolean {
+  return useEngineMultipleValues(mapEngine, SEARCH_STALENESS_KEYS, (state) => {
+    const query = state.semanticQuery.trim();
+    if (query.length < 3 || state.lastExecutedResultLimit === null) return false;
+    const currentLimit =
+      state.limitChoice === "custom" ? Number(state.customLimit) : Number(state.limitChoice);
+    return query === state.lastExecutedSemanticQuery && currentLimit === state.lastExecutedResultLimit;
+  });
 }
+
+// SemanticSearchBar.tsx — 3 state reads, delegates guard to hook
+const semanticQuery = useMapValue("semanticQuery");
+const semanticLoading = useMapValue("semanticLoading");
+const semanticError = useMapValue("semanticError");
+const isAlreadyExecutedSearch = useIsSearchAlreadyExecuted();
+```
+
+**Why this is better**: `SemanticSearchBar` no longer knows about `lastExecutedResultLimit` or limit-resolution math. The staleness check is defined once in `mapHooks.ts`, alongside the other selectors, and changes to the deduplication logic only touch one place.
+
+---
+
+### ISSUE-03: Limit-resolution validation is written three times
+
+**Severity**: Low
+**Principle**: Code Duplication
+**Location**: `src/state/mapActions.ts` (`resolveCurrentTopK`), `src/state/useMapUrlSync.ts` (`resolveResultLimit`), `src/components/SemanticSearchBar.tsx` (inline)
+
+The pattern `limitChoice === "custom" ? Number(customLimit) : Number(limitChoice)` and the validity check `Number.isFinite(x) && Number.isInteger(x) && x >= 1` each appear in three files. If the validation rule changes (e.g., adding a maximum), three files need updating.
+
+#### Current (Bad)
+
+```ts
+// mapActions.ts
+const parsed = Number(customLimit);
+if (Number.isFinite(parsed) && Number.isInteger(parsed) && parsed >= 1) { ... }
+
+// useMapUrlSync.ts
+const parsedLimit = limitChoice === "custom" ? Number(customLimit) : Number(limitChoice);
+if (Number.isFinite(parsedLimit) && Number.isInteger(parsedLimit) && parsedLimit >= 1) { ... }
+
+// SemanticSearchBar.tsx
+const selectedResultLimit = limitChoice === "custom" ? Number(customLimit) : Number(limitChoice);
+const hasValidResultLimit = Number.isFinite(selectedResultLimit) && Number.isInteger(selectedResultLimit) && selectedResultLimit >= 1;
+```
+
+#### Recommended (Good)
+
+```ts
+// state/mapUrlParams.ts — already the natural home for limit parsing; add one export
+export function resolveResultLimit(limitChoice: LimitChoice, customLimit: string): number | null {
+  const value = limitChoice === "custom" ? Number(customLimit) : Number(limitChoice);
+  return Number.isFinite(value) && Number.isInteger(value) && value >= 1 ? value : null;
+}
+
+// mapActions.ts — import and use it
+import { resolveResultLimit } from "./mapUrlParams";
+function resolveCurrentTopK(): number {
+  const resolved = resolveResultLimit(
+    mapEngine.getCurrentValue("limitChoice"),
+    mapEngine.getCurrentValue("customLimit"),
+  );
+  return resolved ?? Number(import.meta.env.VITE_SEMANTIC_TOP_K ?? "30");
+}
+
+// useMapUrlSync.ts — replace local resolveResultLimit with the import
+// SemanticSearchBar.tsx — the ISSUE-02 fix removes the inline copy entirely
+```
+
+**Why this is better**: The validity rule is defined once. Callers still handle the `null` case differently (one falls back to an env default, another treats it as invalid) — that divergence is correct; what should be shared is just the parsing logic.
+
+---
+
+### ISSUE-04: `MapPage` mixes domain components with raw layout markup
+
+**Severity**: Low
+**Principle**: SLA Violation
+**Location**: `src/pages/MapPage.tsx`
+
+`MapPage` composes domain components (`<MapControls>`, `<MapViewer>`, `<PointDetailsPanel>`) but also owns the raw grid/flex structure that positions them. The nested `div > div.grid > main > div` chain is a layout concern, not a domain concern, and mixes abstraction levels.
+
+#### Current (Bad)
+
+```tsx
+return (
+  <>
+    <MapControls />
+    <div className="w-full flex-1 min-h-0">                                       {/* layout */}
+      <div className="grid h-full grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px]">
+        <main className="min-w-0 border-white/10 lg:border-r flex flex-col min-h-0">
+          <div className="p-4 flex-1 min-h-0">
+            <MapViewer />                                                           {/* domain */}
+          </div>
+        </main>
+        <PointDetailsPanel />                                                       {/* domain */}
+      </div>
+    </div>
+  </>
+);
 ```
 
 #### Recommended (Good)
 
 ```tsx
-// components/MapWorkspace.tsx — owns the viewer/panel responsive layout
-function MapWorkspace({ viewer, panel }: { viewer: ReactNode; panel: ReactNode }) {
+// components/MapContentArea.tsx — owns the map/details split layout
+function MapContentArea() {
   return (
     <div className="w-full flex-1 min-h-0">
       <div className="grid h-full grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px]">
         <main className="min-w-0 border-white/10 lg:border-r flex flex-col min-h-0">
-          <div className="p-4 flex-1 min-h-0">{viewer}</div>
+          <div className="p-4 flex-1 min-h-0"><MapViewer /></div>
         </main>
-        {panel}
+        <PointDetailsPanel />
       </div>
     </div>
   );
 }
 
-// pages/MapPage.tsx — reads like a sentence
-export default function MapPage() {
-  // ...hooks
-  return (
-    <AppLayout>
-      <MapControls />
-      <MapWorkspace viewer={<MapViewer />} panel={<PointDetailsPanel />} />
-    </AppLayout>
-  );
-}
+// pages/MapPage.tsx — domain components only
+return (
+  <>
+    <MapControls />
+    <MapContentArea />
+  </>
+);
 ```
 
-**Why this is better**: `MapPage` now reads as a declarative list of its domain concepts. The responsive layout logic is named and locatable, and changes to the grid happen in one place.
+**Why this is better**: `MapPage` reads as a sentence of domain concepts. Layout changes (breakpoints, panel widths, padding) are isolated to `MapContentArea` and never require touching the page.
 
 ---
 
-### ISSUE-3: `MapControls` handles two distinct responsibilities
+### ISSUE-05: `NavLink` className callback duplicated three times in `Navbar`
 
 **Severity**: Low
-**Principle**: SLA Violation
-**Location**: `frontend/src/components/MapControls.tsx`
+**Principle**: Code Duplication
+**Location**: `src/components/Navbar.tsx`
 
-`MapControls` renders both the result-limit selector (dropdown + optional custom input + point count) and the semantic search bar (query input + button + error). These are two separate features with different state, different user intent, and different failure modes. The component makes 8 `useMapValue()` calls — 4 for limits, 4 for search — and describing what it renders requires naming both concerns.
+The same `className` callback — combining a base string with active/hover state — is copy-pasted for all three nav links. Adding a fourth route, or changing the active style, means editing the same logic three times.
 
 #### Current (Bad)
 
 ```tsx
-function MapControls() {
-  // 4 calls for limits
-  const limitChoice = useMapValue("limitChoice");
-  const customLimit = useMapValue("customLimit");
-  const lastExecutedResultLimit = useMapValue("lastExecutedResultLimit");
-  const pointsCount = useMapValue("points").length;
+const linkBase = "h-full inline-flex items-center ...";
 
-  // 4 calls for search
-  const semanticQuery = useMapValue("semanticQuery");
-  const semanticLoading = useMapValue("semanticLoading");
-  const semanticError = useMapValue("semanticError");
-  const lastExecutedSemanticQuery = useMapValue("lastExecutedSemanticQuery");
-
-  return (
-    <div className="border-b border-white/10 px-4 py-3">
-      <div className="flex flex-wrap items-center gap-4">
-        <label>  {/* result limit dropdown */} </label>
-        {/* custom limit input */}
-        <div>{/* point count */}</div>
-        <form>  {/* semantic search form */} </form>
-      </div>
-      {semanticError ? <div>...</div> : null}
-    </div>
-  );
-}
+<NavLink to="/" className={({ isActive }) => `${linkBase} ${isActive ? "border-white" : "hover:border-white"}`}>Home</NavLink>
+<NavLink to="/map" className={({ isActive }) => `${linkBase} ${isActive ? "border-white" : "hover:border-white"}`}>Map</NavLink>
+<NavLink to="/about" className={({ isActive }) => `${linkBase} ${isActive ? "border-white" : "hover:border-white"}`}>About</NavLink>
 ```
 
 #### Recommended (Good)
 
 ```tsx
-// components/ResultLimitSelector.tsx — owns limit dropdown, custom input, point count
-function ResultLimitSelector() {
-  const limitChoice = useMapValue("limitChoice");
-  const customLimit = useMapValue("customLimit");
-  const pointsCount = useMapValue("points").length;
-  // ...
-}
-
-// components/SemanticSearchBar.tsx — owns query input, button, error display
-function SemanticSearchBar() {
-  const semanticQuery = useMapValue("semanticQuery");
-  const semanticLoading = useMapValue("semanticLoading");
-  const semanticError = useMapValue("semanticError");
-  const lastExecutedSemanticQuery = useMapValue("lastExecutedSemanticQuery");
-  const lastExecutedResultLimit = useMapValue("lastExecutedResultLimit");
-  // ...
-}
-
-// components/MapControls.tsx — composes two named features
-function MapControls() {
+function AppNavLink({ to, children }: { to: string; children: ReactNode }) {
   return (
-    <div className="border-b border-white/10 px-4 py-3">
-      <div className="flex flex-wrap items-center gap-4">
-        <ResultLimitSelector />
-        <SemanticSearchBar />
-      </div>
-    </div>
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        `h-full inline-flex items-center text-white text-sm md:text-base border-b-2 -mb-px transition-colors ${
+          isActive ? "border-white" : "border-transparent hover:border-white"
+        }`
+      }
+    >
+      {children}
+    </NavLink>
   );
 }
+
+<AppNavLink to="/">Home</AppNavLink>
+<AppNavLink to="/map">Map</AppNavLink>
+<AppNavLink to="/about">About</AppNavLink>
 ```
 
-**Why this is better**: Each sub-component has a single clear responsibility and a focused set of state subscriptions. `MapControls` becomes a pure layout composer.
+**Why this is better**: The active style is defined once; adding a new route is one line.
 
 ---
 
-### ISSUE-4: `PointDetailsContent` has unnamed inline sections alongside the named `TagsSection`
+### ISSUE-06: `buildMapUrlState` is exported but never used
 
 **Severity**: Low
-**Principle**: SLA Violation
-**Location**: `frontend/src/components/PointDetailsPanel.tsx` (lines 24–122)
+**Principle**: Code Duplication / Dead Code
+**Location**: `src/state/mapUrlParams.ts`
 
-`PointDetailsContent` correctly uses `TagsSection` for categories and review tags, but the image, metadata badges (destination, rating), name, and description are raw inline HTML at the same level. The abstraction is inconsistent: some sections are named and some are anonymous divs. The image and metadata badges are distinct enough UI pieces to warrant names.
+`buildMapUrlState` is exported from `mapUrlParams.ts` but is not imported anywhere in the codebase. `useMapUrlSync.ts` builds its state→URL params inline (lines 97–119) rather than calling this function. Dead exports mislead readers into thinking the function is part of the module's public contract.
 
 #### Current (Bad)
 
-```tsx
-function PointDetailsContent() {
-  return (
-    <div className="space-y-5">
-      <div className="overflow-hidden rounded-lg border border-white/10 bg-white/5"> {/* unnamed image */}
-        <img src={selected.picture} ... />
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-200"> {/* unnamed badges */}
-        <span className="rounded-full border border-white/20 px-2.5 py-1">
-          {selected.destination || "Unknown destination"}
-        </span>
-        <span ...>Rating: {selected.rating.toFixed(1)}</span>
-      </div>
-
-      <div className="text-base font-semibold leading-snug">{selected.name}</div>
-
-      <TagsSection label="Categories" ...>...</TagsSection>   {/* named ✓ */}
-      <TagsSection label="Review Tags" ...>...</TagsSection>  {/* named ✓ */}
-    </div>
-  );
-}
+```ts
+// mapUrlParams.ts — exported, but zero import sites in the project
+export function buildMapUrlState(params: {
+  semanticQuery: string;
+  limitChoice: LimitChoice;
+  customLimit: string;
+  selectedPointId: string | null;
+}): URLSearchParams { ... }
 ```
 
 #### Recommended (Good)
 
-```tsx
-function PointHero({ point }: { point: TravelPoint }) {
-  if (!point.picture) return null;
-  return (
-    <div className="overflow-hidden rounded-lg border border-white/10 bg-white/5">
-      <img src={point.picture} alt={point.name} className="h-44 w-full object-cover" loading="lazy" />
-    </div>
-  );
-}
+Delete `buildMapUrlState`. If `useMapUrlSync.ts` is ever refactored to use a builder, re-introduce it then — with inputs matched to what the hook actually produces (`lastExecutedSemanticQuery: string`, `lastExecutedResultLimit: number | null`), not the current form-field shape.
 
-function PointMetaBadges({ point }: { point: TravelPoint }) {
-  return (
-    <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-200">
-      <span className="rounded-full border border-white/20 px-2.5 py-1">
-        {point.destination || "Unknown destination"}
-      </span>
-      <span className="rounded-full border border-white/20 px-2.5 py-1">
-        Rating: {Number.isFinite(point.rating) ? point.rating.toFixed(1) : "n/a"}
-      </span>
-    </div>
-  );
-}
-
-function PointDetailsContent() {
-  const selected = useSelectedPoint();
-  // ...
-  return (
-    <div className="space-y-5">
-      <PointHero point={selected} />
-      <PointMetaBadges point={selected} />
-      <div className="text-base font-semibold leading-snug">{selected.name}</div>
-      <div className="text-sm text-zinc-200/90 leading-relaxed">{selected.description}</div>
-      <TagsSection label="Categories" ...>...</TagsSection>
-      <TagsSection label="Review Tags" ...>...</TagsSection>
-      {/* ... link */}
-    </div>
-  );
-}
-```
-
-**Why this is better**: Every visual section in `PointDetailsContent` is now a named component, making the composition self-documenting and each piece independently modifiable.
+**Why this is better**: Removes a function that silently diverged from the actual URL serialisation used in production, preventing future confusion about which serialiser is authoritative.
 
 ---
 
-## What's Working Well
+## What Is Working Well
 
-- **API abstraction layer**: `SemanticNavigatorApi` is a proper class with constructor injection. Actions call the API through the singleton; no component or hook ever imports `fetch` directly. Swapping the backend requires touching only this class.
-- **State layering**: The engine / actions / hooks separation is clean. `mapActions.ts` owns all state mutation logic; hooks are thin wrappers for React subscription. `useMapUrlSync` is well-isolated in its own file.
-- **`PointDetailsPanel` structure**: The file correctly defines `TagsSection`, `PointDetailsContent`, and `PointDetailsPanel` as three distinct components. `PointDetailsContent` is reused for both the desktop aside and mobile drawer without any duplication.
-- **`PointDetailsPanelMobile`**: Clean props-based API (`open`, `onClose`, `children`) with no global state access — the right design for a reusable UI primitive.
-- **No prop drilling**: Every component subscribes to state directly via hooks. No intermediate components pass unused props.
-- **No code duplication**: `TagsSection` was extracted at exactly the right moment — when the pattern appeared twice.
+Every component was examined. The following are well-structured — no issues found:
+
+- **`SemanticNavigatorApi` + `apiClient.ts`**: Textbook API abstraction. A class with constructor injection (`baseUrl`), instantiated as a singleton. `mapActions.ts` is the only consumer. Swapping the backend requires changing only this class.
+- **`mapEngine` / `mapActions` / `mapHooks` layering**: Engine → actions → hooks → components. No component or hook calls the API directly; everything goes through the action layer.
+- **`MapControls`**: Clean orchestrator — composes `<ResultLimitSelector>` and `<SemanticSearchBar>` with no logic of its own.
+- **`ResultLimitSelector`**: Well-scoped. Handles the dropdown, conditional custom input, and the "showing X of Y" counter — all related to the same control, at the same abstraction level. No unnecessary state reads.
+- **`MapViewer`**: A clean state-machine renderer — loading / error / content, each at the same level, delegating the happy path to `<MapPlot>`.
+- **`PointDetailsContent`**: All sections render at a consistent abstraction level, using the local `<TagsSection>` helper for structured content. The local `TagsSection` component is a good extraction that removes the repeated label/empty-state pattern.
+- **`PointDetailsPanelMobile`**: A well-designed pure presentation component. Props are minimal (`open`, `onClose`, `children`) and the callback is correctly typed as `() => void`.
+- **`useMapUrlSync`**: Non-trivial bidirectional sync implemented correctly. Using `mapEngine.getCurrentValue()` in the URL→state effect (rather than reactive subscriptions) avoids stale-closure bugs.
+- **`mapUrlParams.ts` (`parseMapUrlState`)**: Parsing logic is properly isolated from the hook. Functions are pure and independently testable.
+- **`useSemanticAutoRefresh`**: Correctly debounces only custom-limit keystrokes while firing immediately for preset-limit changes. The asymmetric debouncing is intentional and correct.
 
 ---
 
@@ -317,10 +352,12 @@ function PointDetailsContent() {
 
 | Priority | Issue | Effort | Impact |
 |----------|-------|--------|--------|
-| 1 | ISSUE-1: Layout via `<Outlet />` → per-page `AppLayout` | Low | Medium |
-| 2 | ISSUE-2: Extract `MapWorkspace` from `MapPage` | Low | Low |
-| 3 | ISSUE-3: Split `MapControls` into `ResultLimitSelector` + `SemanticSearchBar` | Low | Low |
-| 4 | ISSUE-4: Extract `PointHero` and `PointMetaBadges` from `PointDetailsContent` | Low | Low |
+| 1 | ISSUE-01: Page-composed layout instead of router Outlet | Medium | Medium |
+| 2 | ISSUE-02: `SemanticSearchBar` state over-subscription and duplicated guard | Low | Medium |
+| 3 | ISSUE-03: Extract shared limit-resolution utility | Low | Low |
+| 4 | ISSUE-04: Extract `MapContentArea` from `MapPage` | Low | Low |
+| 5 | ISSUE-05: Extract `AppNavLink` in `Navbar` | Low | Low |
+| 6 | ISSUE-06: Delete `buildMapUrlState` dead export | Low | Low |
 
 ---
 
@@ -328,11 +365,11 @@ function PointDetailsContent() {
 
 | Criterion | Score (1–5) | Notes |
 |-----------|-------------|-------|
-| Single Level of Abstraction | 3.5 | Localized mixing in `MapPage`, `MapControls`, and `PointDetailsContent`; `PointDetailsPanel` itself is well-structured |
-| Component API Design | 3.5 | Most components have no props and read from global state (valid pattern); `PointDetailsPanelMobile` shows the cleaner alternative for reusable pieces |
-| Data Flow Clarity | 5 | Engine → actions → hooks → components is consistently enforced; URL sync cleanly isolated |
-| API Abstraction Layer | 5 | `SemanticNavigatorApi` class, singleton, no leakage into hooks or components |
-| App Layout / Shell | 2.5 | Outlet-based layout makes pages router-dependent fragments |
-| Code Duplication | 5 | Near-zero duplication; `TagsSection` extracted at exactly the right time |
-| Composition Patterns | 4 | `children` used well in `PointDetailsPanelMobile`; `PointDetailsContent` reuse is clean |
-| **Overall** | **4.1** | Solid architecture for this scope. The API layer and state management are particularly strong. The main investment is the layout pattern; the SLA issues are all low-effort fixes. |
+| Single Level of Abstraction | 4 | `MapPage` mixes layout with domain; all other components are consistent |
+| Component API Design | 4 | `SemanticSearchBar` reads too many keys; all other APIs are clean and minimal |
+| Data Flow Clarity | 4 | Engine → actions → hooks → components is solid; `SemanticSearchBar` duplicates the action-layer guard |
+| API Abstraction Layer | 5 | `SemanticNavigatorApi` class with constructor injection; `mapActions` is the only consumer |
+| App Layout / Shell | 3 | Router-level Outlet pattern; pages are not self-contained |
+| Code Duplication | 3 | Limit-resolution logic in 3 places; `buildMapUrlState` is dead; NavLink pattern repeated |
+| Composition Patterns | 4 | `children` used well; `memo` applied consistently; `AppNavLink` is a natural missing local component |
+| **Overall** | **3.9 / 5** | Strong foundation with a handful of low-effort improvements available |

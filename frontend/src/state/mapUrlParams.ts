@@ -17,6 +17,26 @@ const PRESET_LIMIT_CHOICE_VALUES = Object.keys(LimitChoices).filter(
   (key) => key !== "custom"
 ) as Exclude<LimitChoice, "custom">[];
 
+// Resolves the current result-limit value from custom inputs.
+// Returns null when the value is not a positive integer.
+export function resolveResultLimit(
+  limitChoice: LimitChoice,
+  customLimit: string
+): number | null {
+  const parsedLimit =
+    limitChoice === "custom" ? Number(customLimit) : Number(limitChoice);
+
+  if (
+    Number.isFinite(parsedLimit) &&
+    Number.isInteger(parsedLimit) &&
+    parsedLimit >= 1
+  ) {
+    return parsedLimit;
+  }
+
+  return null;
+}
+
 // Returns the default result-limit state from env (VITE_SEMANTIC_TOP_K),
 // normalized into { limitChoice, customLimit }.
 function getDefaultResultLimitState(): ResultLimitState {
@@ -71,11 +91,11 @@ function parseResultLimitState(resultLimitFromUrl: string): ResultLimitState {
     };
   }
 
-  const parsedCustomLimit = Number(normalizedResultLimit);
-  if (Number.isFinite(parsedCustomLimit) && Number.isInteger(parsedCustomLimit) && parsedCustomLimit >= 1) {
+  const resolvedCustomLimit = resolveResultLimit("custom", normalizedResultLimit);
+  if (resolvedCustomLimit !== null) {
     return {
       limitChoice: "custom",
-      customLimit: String(parsedCustomLimit),
+      customLimit: String(resolvedCustomLimit),
     };
   }
 
@@ -97,35 +117,4 @@ export function parseMapUrlState(searchParams: URLSearchParams): ParsedMapUrlSta
     customLimit: parsedResultLimitState.customLimit,
     selectedPointId: selectedPointIdFromUrl || null,
   };
-}
-
-// Builds URL query params from current map state.
-// Serializes only shareable fields (query, result limit, selected point id).
-export function buildMapUrlState(params: {
-  semanticQuery: string;
-  limitChoice: LimitChoice;
-  customLimit: string;
-  selectedPointId: string | null;
-}): URLSearchParams {
-  const nextSearchParams = new URLSearchParams();
-
-  const normalizedSemanticQuery = params.semanticQuery.trim();
-  if (normalizedSemanticQuery) {
-    nextSearchParams.set("semanticQuery", normalizedSemanticQuery);
-  }
-
-  const normalizedResultLimit =
-    params.limitChoice === "custom"
-      ? params.customLimit.trim()
-      : params.limitChoice;
-
-  if (normalizedResultLimit) {
-    nextSearchParams.set("resultLimit", normalizedResultLimit);
-  }
-
-  if (params.selectedPointId) {
-    nextSearchParams.set("selectedPointId", params.selectedPointId);
-  }
-
-  return nextSearchParams;
 }

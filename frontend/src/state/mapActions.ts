@@ -1,20 +1,15 @@
 import { navigatorApi } from "../api/apiClient";
 import type { LimitChoice, TravelPoint } from "../types";
 import { initialMapState, mapEngine } from "./mapEngine";
+import { resolveResultLimit } from "./mapUrlParams";
 
 function resolveCurrentTopK(): number {
-  const limitChoice = mapEngine.getCurrentValue("limitChoice");
+  const resolved = resolveResultLimit(
+    mapEngine.getCurrentValue("limitChoice"),
+    mapEngine.getCurrentValue("customLimit")
+  );
 
-  if (limitChoice === "custom") {
-    const customLimit = mapEngine.getCurrentValue("customLimit");
-    const parsed = Number(customLimit);
-    if (Number.isFinite(parsed) && Number.isInteger(parsed) && parsed >= 1) {
-      return parsed;
-    }
-    return Number(import.meta.env.VITE_SEMANTIC_TOP_K ?? "30");
-  }
-
-  return Number(limitChoice);
+  return resolved ?? Number(import.meta.env.VITE_SEMANTIC_TOP_K ?? "30");
 }
 
 export function setPoints(points: TravelPoint[]) {
