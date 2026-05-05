@@ -1,5 +1,5 @@
 import { createEngine } from "@ysaurnofsilraev/state-manager";
-import type { LimitChoice, TravelPoint } from "../types";
+import type { LimitChoice, TravelPoint } from "../../types";
 
 export type MapState = {
   points: TravelPoint[];

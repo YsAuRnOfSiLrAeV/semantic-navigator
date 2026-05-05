@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { navigatorApi } from "../api/apiClient";
-import { mapEngine, type MapState } from "./mapEngine";
+import { navigatorApi } from "../../api/apiClient";
+import { mapEngine, type MapState } from "../engine/mapEngine";
 import {
   resetMapState,
   runSemanticSearch,

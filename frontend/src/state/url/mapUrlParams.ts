@@ -1,5 +1,5 @@
-import { LimitChoices } from "../constants";
-import type { LimitChoice } from "../types";
+import { LimitChoices } from "../../constants";
+import type { LimitChoice } from "../../types";
 
 type ResultLimitState = {
   limitChoice: LimitChoice;

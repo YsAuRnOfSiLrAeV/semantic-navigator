@@ -1,7 +1,7 @@
-import { navigatorApi } from "../api/apiClient";
-import type { LimitChoice, TravelPoint } from "../types";
-import { initialMapState, mapEngine } from "./mapEngine";
-import { resolveResultLimit } from "./mapUrlParams";
+import { navigatorApi } from "../../api/apiClient";
+import type { LimitChoice, TravelPoint } from "../../types";
+import { initialMapState, mapEngine } from "../engine/mapEngine";
+import { resolveResultLimit } from "../url/mapUrlParams";
 
 function resolveCurrentTopK(): number {
   const resolved = resolveResultLimit(

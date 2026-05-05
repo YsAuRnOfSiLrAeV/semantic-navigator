@@ -1,15 +1,15 @@
 import { useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { mapEngine } from "./mapEngine";
+import { mapEngine } from "../engine/mapEngine";
 import {
   runSemanticSearch,
   setCustomLimit,
   setLimitChoice,
   setSelectedId,
   setSemanticQuery,
-} from "./mapActions";
-import { useMapValue } from "./mapHooks";
+} from "../actions/mapActions";
 import { parseMapUrlState, resolveResultLimit } from "./mapUrlParams";
+import { useMapValue } from "../selectors/mapSelectors";
 
 export function useMapUrlSync() {
   const [searchParams, setSearchParams] = useSearchParams();
