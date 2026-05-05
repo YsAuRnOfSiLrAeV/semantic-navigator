@@ -3,13 +3,13 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import MapControls from "./MapControls";
-import { navigatorApi } from "../api/apiClient";
+import { navigatorApi } from "../../api/apiClient";
 import {
   resetMapState,
   setCustomLimit,
   setLimitChoice,
   setSemanticError,
-} from "../state/mapActions";
+} from "../../state/actions/mapActions";
 
 vi.mock("../api/apiClient", () => ({
   navigatorApi: {

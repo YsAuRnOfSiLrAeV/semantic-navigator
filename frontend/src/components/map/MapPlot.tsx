@@ -1,14 +1,14 @@
 import { memo, useMemo } from "react";
 import Plot from "react-plotly.js";
-import { useMapValue } from "../state/mapHooks";
-import { setOpen, setSelectedId } from "../state/mapActions";
+import { setOpen, setSelectedId } from "../../state/actions/mapActions";
+import { useMapValue } from "../../state/selectors/mapSelectors";
 
 function clusterColor(cluster: number, k:number): string {
   const hue = (cluster * (360 / k)) % 360;
   return `hsl(${hue} 70% 55%)`;
 }
 
-function MapPlot() {
+export const MapPlot = memo(function MapPlot() {
   const points = useMapValue("points");
 
   const plotData = useMemo(() => {
@@ -78,6 +78,4 @@ function MapPlot() {
       }}
     />
   );
-}
-
-export default memo(MapPlot);
+})

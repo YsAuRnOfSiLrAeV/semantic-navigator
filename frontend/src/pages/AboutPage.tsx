@@ -1,4 +1,4 @@
-export default function AboutPage() {
+export function AboutPage() {
   return (
     <main className="p-6 md:p-10 text-zinc-100 space-y-6">
       <h1 className="text-3xl md:text-4xl font-semibold">About</h1>

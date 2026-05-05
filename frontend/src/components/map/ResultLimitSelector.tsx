@@ -1,10 +1,10 @@
 import { memo } from "react";
-import type { LimitChoice } from "../types";
-import { LimitChoices } from "../constants";
-import { useMapValue } from "../state/mapHooks";
-import { setCustomLimit, setLimitChoice } from "../state/mapActions";
+import type { LimitChoice } from "../../types";
+import { LimitChoices } from "../../constants";
+import { setCustomLimit, setLimitChoice } from "../../state/actions/mapActions";
+import { useMapValue } from "../../state/selectors/mapSelectors";
 
-function ResultLimitSelector() {
+export const ResultLimitSelector = memo(function ResultLimitSelector() {
   const limitChoice = useMapValue("limitChoice");
   const customLimit = useMapValue("customLimit");
   const pointsCount = useMapValue("points").length;
@@ -47,6 +47,4 @@ function ResultLimitSelector() {
       </div>
     </>
   );
-}
-
-export default memo(ResultLimitSelector);
+})

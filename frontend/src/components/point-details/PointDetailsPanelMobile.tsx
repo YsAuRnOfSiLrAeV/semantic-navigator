@@ -6,7 +6,7 @@ type Props = {
   children: ReactNode;
 };
 
-export default function PointDetailsPanelMobile({ open, onClose, children }: Props) {
+export function PointDetailsPanelMobile({ open, onClose, children }: Props) {
   return (
     <div className={`lg:hidden ${open ? "" : "pointer-events-none"}`}>
       <div
@@ -17,7 +17,7 @@ export default function PointDetailsPanelMobile({ open, onClose, children }: Pro
       />
 
       <div
-        className={`fixed inset-y-0 right-0 w-full sm:w-[420px] bg-zinc-950 border-l border-white/10 transition-transform flex flex-col ${
+        className={`fixed inset-y-0 right-0 w-full sm:w-105 bg-zinc-950 border-l border-white/10 transition-transform flex flex-col ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >

@@ -1,9 +1,11 @@
-﻿import { MapControls, PointDetailsPanel } from "../components";
-import MapViewer from "../components/MapViewer";
-import { usePointsLoader, useSemanticAutoRefresh } from "../state/mapHooks";
-import { useMapUrlSync } from "../state/useMapUrlSync";
+﻿import { PointDetailsPanel, MapControls, MapViewer } from "../components";
+import {
+  usePointsLoader,
+  useSemanticAutoRefresh
+} from "../state/effects/mapEffects";
+import { useMapUrlSync } from "../state/url/useMapUrlSync";
 
-export default function MapPage() {
+export function MapPage() {
   useMapUrlSync();
   usePointsLoader();
   useSemanticAutoRefresh();

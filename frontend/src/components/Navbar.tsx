@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 
-export default function Navbar() {
+export function Navbar() {
   const linkBase = "h-full inline-flex items-center text-white text-sm md:text-base border-b-2 border-transparent -mb-px transition-colors";
 
   return (

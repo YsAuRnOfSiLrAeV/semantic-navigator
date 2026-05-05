@@ -1,8 +1,8 @@
 import { memo } from "react";
-import { useMapValue } from "../state/mapHooks";
-import MapPlot from "./MapPlot";
+import { MapPlot } from "./MapPlot";
+import { useMapValue } from "../../state/selectors/mapSelectors";
 
-function MapViewer() {
+export const MapViewer = memo(function MapViewer() {
   const loading = useMapValue("loading");
   const error = useMapValue("error");
   return (
@@ -18,6 +18,4 @@ function MapViewer() {
       )}
     </div>
   );
-}
-
-export default memo(MapViewer);
+})

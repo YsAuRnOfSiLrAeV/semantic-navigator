@@ -1,28 +1,20 @@
 import { FormEvent, memo, useCallback } from "react";
-import { useMapValue } from "../state/mapHooks";
-import { runSemanticSearch, setSemanticQuery } from "../state/mapActions";
-import { resolveResultLimit } from "../state/mapUrlParams";
+import { runSemanticSearch, setSemanticQuery } from "../../state/actions/mapActions";
+import {
+  useHasValidResultLimit,
+  useIsSearchAlreadyExecuted,
+  useMapValue
+} from "../../state/selectors/mapSelectors";
 
-function SemanticSearchBar() {
+export const SemanticSearchBar = memo(function SemanticSearchBar() {
   const semanticQuery = useMapValue("semanticQuery");
   const semanticLoading = useMapValue("semanticLoading");
   const semanticError = useMapValue("semanticError");
 
-  const limitChoice = useMapValue("limitChoice");
-  const customLimit = useMapValue("customLimit");
-  const lastExecutedSemanticQuery = useMapValue("lastExecutedSemanticQuery");
-  const lastExecutedResultLimit = useMapValue("lastExecutedResultLimit");
+  const hasValidResultLimit = useHasValidResultLimit();
+  const isAlreadyExecutedSearch = useIsSearchAlreadyExecuted();
 
   const normalizedSemanticQuery = semanticQuery.trim();
-  
-  const selectedResultLimit = resolveResultLimit(limitChoice, customLimit);
-  const hasValidResultLimit = selectedResultLimit !== null;
-
-  const isAlreadyExecutedSearch =
-    normalizedSemanticQuery.length >= 3 &&
-    hasValidResultLimit &&
-    normalizedSemanticQuery === lastExecutedSemanticQuery &&
-    selectedResultLimit === lastExecutedResultLimit;
 
   const handleSemanticSearchSubmit = useCallback((event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -62,6 +54,4 @@ function SemanticSearchBar() {
       ) : null}
     </>
   );
-}
-
-export default memo(SemanticSearchBar);
+})

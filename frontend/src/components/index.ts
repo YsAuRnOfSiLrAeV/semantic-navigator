@@ -1,13 +1,27 @@
-﻿import Navbar from "./Navbar";
-import MapControls from "./MapControls";
-import MapPlot from "./MapPlot";
-import PointDetailsPanel from "./PointDetailsPanel";
-import SidePanel from "./PointDetailsPanelMobile";
+﻿import { Navbar } from "./Navbar";
+import {
+  MapControls,
+  MapPlot,
+  MapViewer,
+  ResultLimitSelector,
+  SemanticSearchBar,
+} from "./map";
+import {
+  PointDetailsContent,
+  PointDetailsPanel,
+  PointDetailsPanelMobile,
+  TagsSection,
+} from "./point-details";
 
 export {
   Navbar,
   MapControls,
   MapPlot,
+  MapViewer,
+  ResultLimitSelector,
+  SemanticSearchBar,
+  PointDetailsContent,
   PointDetailsPanel,
-  SidePanel,
+  PointDetailsPanelMobile,
+  TagsSection,
 };
