@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import MapControls from "./MapControls";
+import { MapControls } from "./MapControls";
 import { navigatorApi } from "../../api/apiClient";
 import {
   resetMapState,
@@ -11,7 +11,7 @@ import {
   setSemanticError,
 } from "../../state/actions/mapActions";
 
-vi.mock("../api/apiClient", () => ({
+vi.mock("../../api/apiClient", () => ({
   navigatorApi: {
     fetchPoints: vi.fn(),
     searchSemantic: vi.fn(),

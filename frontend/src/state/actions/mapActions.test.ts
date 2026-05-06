@@ -10,7 +10,7 @@ import {
   setSemanticQuery,
 } from "./mapActions";
 
-vi.mock("../api/apiClient", () => ({
+vi.mock("../../api/apiClient", () => ({
   navigatorApi: {
     fetchPoints: vi.fn(),
     searchSemantic: vi.fn(),
