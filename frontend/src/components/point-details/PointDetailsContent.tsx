@@ -3,6 +3,7 @@ import { PointNavigation } from "./PointNavigation";
 import { ReviewTagsSection } from "./ReviewTagsSection";
 import { CategoriesSection } from "./CategoriesSection";
 import { memo } from "react";
+import { getOptimizedTripadvisorUrl } from "./imageUrl";
 
 const MAX_REVIEW_TAGS = Number(import.meta.env.VITE_MAX_REVIEW_TAGS);
 
@@ -12,6 +13,9 @@ export const PointDetailsContent = memo(function PointDetailsContent() {
   if (!selected) {
     return <div className="text-sm text-zinc-400">Click a point to see details.</div>;
   }
+
+  const originalPicture = selected.picture || "";
+  const optimizedPicture = getOptimizedTripadvisorUrl(originalPicture);
 
   const externalLink = selected.tripadvisor_url || selected.attraction_url;
 
@@ -23,7 +27,18 @@ export const PointDetailsContent = memo(function PointDetailsContent() {
 
       {selected.picture ? (
         <div className="overflow-hidden rounded-lg border border-white/10 bg-white/5">
-          <img src={selected.picture} alt={selected.name} className="h-44 w-full object-cover" loading="lazy" />
+          <img
+            src={optimizedPicture}
+            alt={selected.name}
+            className="h-44 w-full object-cover"
+            loading="lazy"
+            width={640}
+            height={352}
+            onError={(e) => {
+              const img = e.currentTarget;
+              if (img.src !== originalPicture) img.src = originalPicture;
+            }}
+          />
         </div>
       ) : null}
 
