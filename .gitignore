@@ -48,3 +48,5 @@ frontend/test-results/
 frontend/blob-report/
 
 ARCHITECTURE_REVIEW_RESULTS.md
+
+.claude/
