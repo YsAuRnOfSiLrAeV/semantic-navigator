@@ -17,7 +17,7 @@ export const PointDetailsContent = memo(function PointDetailsContent() {
   const originalPicture = selected.picture || "";
   const optimizedPicture = getOptimizedTripadvisorUrl(originalPicture);
 
-  const externalLink = selected.tripadvisor_url || selected.attraction_url;
+  const externalLink = selected.tripadvisor_url || selected.source_url;
 
   return (
     <div className="space-y-5">

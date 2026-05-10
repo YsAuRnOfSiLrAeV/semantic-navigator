@@ -15,7 +15,7 @@ export interface TravelPoint {
   destination: string;
   rating: number;
 
-  attraction_url: string;
+  source_url: string;
   tripadvisor_url: string;
   picture: string;
 }

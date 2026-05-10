@@ -91,7 +91,11 @@ def build_points(
 
     points: list[dict[str, Any]] = []
     for i, row in enumerate(rows):
-        raw_id = row.get("tripadvisor_url") or row.get("attraction_url") or f"{row.get('name','')}|{row.get('destination','')}|{i}"
+        raw_id = (
+            row.get("tripadvisor_url")
+            or row.get("source_url")
+            or f"{row.get('name', '')}|{row.get('destination', '')}|{i}"
+        )
         doc_id = str(uuid.uuid5(uuid.NAMESPACE_URL, raw_id))
         points.append(
             {
@@ -105,7 +109,7 @@ def build_points(
                 "review_tags": row.get("review_tags", ""),
                 "destination": row.get("destination", ""),
                 "rating": row.get("rating", ""),
-                "attraction_url": row.get("attraction_url", ""),
+                "source_url": row.get("source_url"),
                 "tripadvisor_url": row.get("tripadvisor_url", ""),
                 "picture": row.get("picture", ""),
             }

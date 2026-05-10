@@ -11,7 +11,7 @@ type TestPoint = {
   review_tags: string[];
   destination: string;
   rating: number;
-  attraction_url: string;
+  source_url: string;
   tripadvisor_url: string;
   picture: string;
 };
@@ -28,7 +28,7 @@ export function makePoints(count: number): TestPoint[] {
     review_tags: ["tag"],
     destination: "Test City",
     rating: 4.5,
-    attraction_url: "",
+    source_url: "",
     tripadvisor_url: `https://example.com/${index + 1}`,
     picture: "",
   }));

@@ -14,7 +14,7 @@ class Point(BaseModel):
     review_tags: list[str] | str
     destination: str
     rating: float | str
-    attraction_url: str
+    source_url: str
     tripadvisor_url: str
     picture: str
 
