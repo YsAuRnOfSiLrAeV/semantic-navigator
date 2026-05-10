@@ -1,24 +1,30 @@
 import json
 import os
-from pathlib import Path
 from datasets import load_dataset
+from .source_file_map import SOURCE_FILE_MAP
 
-DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
-DATA_FILE = DATA_DIR / "attractions.json"
+DATA_FILE = SOURCE_FILE_MAP["attractions_global"]
+DATA_DIR = DATA_FILE.parent
 
 
-def load_attractions(
+def load_attractions_global(
     limit: int = 10500,
     use_cache: bool = True,
     force_download: bool = False,
     seed: int = 42
 ) -> list[dict]:
     """
-    Load up to 'limit' attractions items for the semantic map.
-    If 'use_cache' is enabled and 'data/attractions.json' exists, read from the local file.
-    Otherwise load the dataset from Hugging Face (use local HF cache by default, set 'force_download' to re-download),
-    shuffle with 'seed' for a diverse reproducible sample, and persist the result to 'data/attractions.json'.
-    Returns: list of dicts with keys: link, headline, short_description, category.
+    Loads normalized source rows for the attractions_global dataset.
+
+    Flow:
+    - If local source file exists and use_cache=True, reads rows from local JSON.
+    - Otherwise downloads rows from Hugging Face (optionally force redownload),
+      shuffles deterministically by seed, truncates to limit, and saves to local JSON.
+
+    Returns:
+    - list[dict] with keys:
+      name, description, categories, review_tags, destination, rating,
+      source_url, tripadvisor_url, picture.
     """
     if use_cache and DATA_FILE.exists():
         with open(DATA_FILE, encoding="utf-8") as f:
@@ -43,7 +49,7 @@ def load_attractions(
             "review_tags": row["REVIEW_TAGS"] or [],
             "destination": row["DESTINATION"] or "",
             "rating": row["RATING"] or "",
-            "attraction_url": row["ATTRACTION_URL"] or "",
+            "source_url": row["ATTRACTION_URL"] or "",
             "tripadvisor_url": row["TRIPADVISOR_URL"] or "",
             "picture": row["PICTURE"] or ""}
             for row in dataset]
