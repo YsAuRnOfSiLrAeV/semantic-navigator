@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 import os
 import requests
+from urllib.parse import quote, unquote, urlparse
 
 from generate_datasets.constants import CONTINENT_PERCENTAGES, CONTINENT_BBOXES
 
@@ -134,6 +135,78 @@ def _fetch_place_details(*, xid: str, api_key: str) -> dict:
     return _otm_get_json(f"xid/{xid}", params={}, api_key=api_key)
 
 
+def _extract_wikimedia_file_title(raw_url: str) -> str | None:
+    """
+    Extract Wikimedia file title (`File:...`) from different URL shapes.
+
+    Why:
+    - OTM may return either a Wikipedia file-page URL or a direct upload.wikimedia URL.
+    - we need a normalized `File:...` title to build a stable image link.
+    """
+    if not raw_url:
+        return None
+
+    parsed = urlparse(raw_url)
+    host = parsed.netloc.lower()
+    path = parsed.path
+
+    if "/wiki/File:" in path:
+        file_title = path.split("/wiki/", 1)[1]
+        return unquote(file_title).strip() or None
+
+    if "upload.wikimedia.org" in host:
+        parts = [p for p in path.split("/") if p]
+        if "thumb" in parts:
+            idx = parts.index("thumb")
+            if len(parts) > idx + 3:
+                file_name = unquote(parts[idx + 3]).strip()
+                if file_name:
+                    return f"File:{file_name}"
+        if parts:
+            file_name = unquote(parts[-1]).strip()
+            if file_name:
+                return f"File:{file_name}"
+
+    return None
+
+
+def _build_wikimedia_redirect_image_url(file_title: str, width: int = 640) -> str:
+    """
+    Build a stable Wikimedia redirect image URL from `File:...` title.
+
+    Why:
+    - many raw thumbnail URLs from OTM are unreliable/hotlink-fragile,
+    - `Special:Redirect/file/...` is more stable for `<img src>`.
+    """
+    encoded = quote(file_title.strip(), safe=":_")
+    return (
+        "https://commons.wikimedia.org/w/index.php?"
+        f"title=Special:Redirect/file/{encoded}&width={width}"
+    )
+
+
+def _resolve_otm_picture_url(details: dict) -> str:
+    """
+    Resolve final picture URL for one OTM place details payload.
+
+    Strategy:
+    - try to normalize Wikimedia URLs via `File:...` -> stable redirect URL,
+    - if not possible, fallback to OTM `preview.source` or `image`.
+
+    Why:
+    - maximize image render success rate while keeping non-Wikimedia images.
+    """
+    preview_source = str((details.get("preview") or {}).get("source") or "").strip()
+    image_source = str(details.get("image") or "").strip()
+
+    for candidate in (image_source, preview_source):
+        title = _extract_wikimedia_file_title(candidate)
+        if title:
+            return _build_wikimedia_redirect_image_url(title, width=640)
+
+    return preview_source or image_source
+
+
 def _map_otm_details_to_row(*, details: dict, continent: str) -> dict | None:
     """
     Map OTM details payload into project row contract (+continent).
@@ -165,7 +238,7 @@ def _map_otm_details_to_row(*, details: dict, continent: str) -> dict | None:
     ).strip()
 
     source_url = str(details.get("url") or details.get("otm") or "").strip()
-    picture = str((details.get("preview") or {}).get("source") or details.get("image") or "").strip()
+    picture = _resolve_otm_picture_url(details)
 
     row = {
         "name": name,
