@@ -1,9 +1,15 @@
-import { useSelectedPoint } from "../../state/selectors/mapSelectors";
-import { PointNavigation } from "./PointNavigation";
-import { ReviewTagsSection } from "./ReviewTagsSection";
-import { CategoriesSection } from "./CategoriesSection";
 import { memo } from "react";
+
+import { useSelectedPoint } from "../../state/selectors/mapSelectors";
+import { CategoriesSection } from "./CategoriesSection";
 import { getOptimizedTripadvisorUrl } from "./imageUrl";
+import { PointDescription } from "./PointDescription";
+import { PointExternalLink } from "./PointExternalLink";
+import { PointMeta } from "./PointMeta";
+import { PointNavigation } from "./PointNavigation";
+import { PointPhoto } from "./PointPhoto";
+import { PointTitle } from "./PointTitle";
+import { ReviewTagsSection } from "./ReviewTagsSection";
 
 const MAX_REVIEW_TAGS = Number(import.meta.env.VITE_MAX_REVIEW_TAGS);
 
@@ -14,67 +20,28 @@ export const PointDetailsContent = memo(function PointDetailsContent() {
     return <div className="text-sm text-zinc-400">Click a point to see details.</div>;
   }
 
-  const originalPicture = selected.picture || "";
-  const optimizedPicture = getOptimizedTripadvisorUrl(originalPicture);
-
+  const originalPictureUrl = selected.picture || "";
+  const optimizedPictureUrl = getOptimizedTripadvisorUrl(originalPictureUrl);
   const externalLink = selected.tripadvisor_url || selected.source_url;
 
   return (
     <div className="space-y-5">
-      <PointNavigation
-        selectedId={selected?.id ?? null}
-      />
+      <PointNavigation selectedId={selected.id} />
 
       {selected.picture ? (
-        <div className="overflow-hidden rounded-lg border border-white/10 bg-white/5">
-          <img
-            src={optimizedPicture}
-            alt={selected.name}
-            className="h-44 w-full object-cover"
-            loading="lazy"
-            width={640}
-            height={352}
-            onError={(e) => {
-              const img = e.currentTarget;
-              if (img.src !== originalPicture) img.src = originalPicture;
-            }}
-          />
-        </div>
+        <PointPhoto
+          name={selected.name}
+          originalPictureUrl={originalPictureUrl}
+          optimizedPictureUrl={optimizedPictureUrl}
+        />
       ) : null}
 
-      {externalLink ? (
-        <a
-          className="inline-flex rounded border border-white/20 px-3 py-2 text-sm text-zinc-100 hover:border-white/35"
-          href={externalLink}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Open source
-        </a>
-      ) : (
-        <div className="text-sm text-zinc-400">No external link.</div>
-      )}
+      <PointExternalLink externalLink={externalLink} />
+      <PointMeta destination={selected.destination} rating={selected.rating} />
+      <PointTitle name={selected.name} />
+      <PointDescription description={selected.description} />
 
-      <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-200">
-        <span className="rounded-full border border-white/20 px-2.5 py-1">
-          {selected.destination || "Unknown destination"}
-        </span>
-        <span className="rounded-full border border-white/20 px-2.5 py-1">
-          Rating: {Number.isFinite(selected.rating) ? selected.rating.toFixed(1) : "n/a"}
-        </span>
-      </div>
-
-      <div className="text-base font-semibold leading-snug">{selected.name}</div>
-
-      <div className="text-sm text-zinc-200/90 leading-relaxed">
-        {selected.description || <span className="text-zinc-400">No description.</span>}
-      </div>
-
-      <CategoriesSection
-        selectedId={selected.id}
-        categories={selected.categories}
-      />
-
+      <CategoriesSection selectedId={selected.id} categories={selected.categories} />
       <ReviewTagsSection
         selectedId={selected.id}
         reviewTags={selected.review_tags}
@@ -82,4 +49,4 @@ export const PointDetailsContent = memo(function PointDetailsContent() {
       />
     </div>
   );
-})
+});
