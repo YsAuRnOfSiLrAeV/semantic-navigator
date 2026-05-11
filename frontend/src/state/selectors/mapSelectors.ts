@@ -10,6 +10,8 @@ const SEARCH_DEDUP_KEYS = [
   "semanticQuery",
   "lastExecutedSemanticQuery",
   "lastExecutedResultLimit",
+  "selectedDatasetId",
+  "lastExecutedDatasetId",
   "limitChoice",
   "customLimit",
 ] as const;
@@ -46,7 +48,8 @@ export function useIsSearchAlreadyExecuted(): boolean {
 
     return (
       normalizedQuery === state.lastExecutedSemanticQuery &&
-      currentLimit === state.lastExecutedResultLimit
+      currentLimit === state.lastExecutedResultLimit &&
+      state.selectedDatasetId === state.lastExecutedDatasetId
     );
   });
 }

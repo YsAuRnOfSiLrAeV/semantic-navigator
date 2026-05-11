@@ -7,6 +7,7 @@ import {
   setLimitChoice,
   setSelectedId,
   setSemanticQuery,
+  setSelectedDatasetId,
 } from "../actions/mapActions";
 import { parseMapUrlState, resolveResultLimit } from "./mapUrlParams";
 import { useMapValue } from "../selectors/mapSelectors";
@@ -15,6 +16,7 @@ export function useMapUrlSync() {
   const [searchParams, setSearchParams] = useSearchParams();
   const isInternalUrlUpdateRef = useRef(false);
 
+  const selectedDatasetId = useMapValue("selectedDatasetId");
   const selectedPointId = useMapValue("selectedId");
   const lastExecutedSemanticQuery = useMapValue("lastExecutedSemanticQuery");
   const lastExecutedResultLimit = useMapValue("lastExecutedResultLimit");
@@ -28,6 +30,9 @@ export function useMapUrlSync() {
 
     const parsedMapUrlState = parseMapUrlState(searchParams);
 
+    const currentSelectedDatasetId = mapEngine.getCurrentValue("selectedDatasetId");
+    const currentLastExecutedDatasetId = mapEngine.getCurrentValue("lastExecutedDatasetId");
+
     const currentSemanticQuery = mapEngine.getCurrentValue("semanticQuery");
     const currentLimitChoice = mapEngine.getCurrentValue("limitChoice");
     const currentCustomLimit = mapEngine.getCurrentValue("customLimit");
@@ -37,6 +42,11 @@ export function useMapUrlSync() {
       mapEngine.getCurrentValue("lastExecutedSemanticQuery");
     const currentLastExecutedResultLimit =
       mapEngine.getCurrentValue("lastExecutedResultLimit");
+
+    if (parsedMapUrlState.datasetId !== currentSelectedDatasetId) {
+      setSelectedDatasetId(parsedMapUrlState.datasetId);
+      return;
+    }
 
     if (parsedMapUrlState.semanticQuery !== currentSemanticQuery) {
       setSemanticQuery(parsedMapUrlState.semanticQuery);
@@ -69,7 +79,8 @@ export function useMapUrlSync() {
       parsedResultLimit !== null &&
       (
         normalizedSemanticQueryFromUrl !== currentLastExecutedSemanticQuery ||
-        parsedResultLimit !== currentLastExecutedResultLimit
+        parsedResultLimit !== currentLastExecutedResultLimit ||
+        parsedMapUrlState.datasetId !== currentLastExecutedDatasetId
       );
 
     if (shouldRunSemanticSearchFromUrl) {
@@ -80,6 +91,8 @@ export function useMapUrlSync() {
   // state -> URL
   useEffect(() => {
     const nextSearchParams = new URLSearchParams();
+
+    nextSearchParams.set("datasetId", selectedDatasetId);
 
     const normalizedExecutedSemanticQuery = lastExecutedSemanticQuery.trim();
     if (normalizedExecutedSemanticQuery.length > 0) {
@@ -103,6 +116,7 @@ export function useMapUrlSync() {
       setSearchParams(nextSearchParams, { replace: true });
     }
   }, [
+    selectedDatasetId,
     lastExecutedSemanticQuery,
     lastExecutedResultLimit,
     selectedPointId,

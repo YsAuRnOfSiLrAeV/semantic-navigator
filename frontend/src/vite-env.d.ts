@@ -6,6 +6,8 @@ interface ImportMetaEnv {
   readonly VITE_LIMIT_INPUT_DEBOUNCE_MS: string;
   readonly VITE_MAX_REVIEW_TAGS: string;
   readonly VITE_SEMANTIC_TOP_K: string;
+  readonly VITE_DEFAULT_DATASET_ID: string;
+  readonly VITE_ENABLED_DATASET_IDS: string;
 }
 
 interface ImportMeta {

@@ -1,5 +1,5 @@
-import { LimitChoices } from "../../constants";
-import type { LimitChoice } from "../../types";
+import { DefaultDatasetId, EnabledDatasetIds, LimitChoices } from "../../constants";
+import type { DatasetId, LimitChoice } from "../../types";
 
 type ResultLimitState = {
   limitChoice: LimitChoice;
@@ -7,6 +7,7 @@ type ResultLimitState = {
 };
 
 export type ParsedMapUrlState = {
+  datasetId: DatasetId;
   semanticQuery: string;
   limitChoice: LimitChoice;
   customLimit: string;
@@ -16,6 +17,13 @@ export type ParsedMapUrlState = {
 const PRESET_LIMIT_CHOICE_VALUES = Object.keys(LimitChoices).filter(
   (key) => key !== "custom"
 ) as Exclude<LimitChoice, "custom">[];
+
+function parseDatasetId(datasetIdFromUrl: string): DatasetId {
+  const normalizedDatasetId = datasetIdFromUrl.trim() as DatasetId;
+  return EnabledDatasetIds.includes(normalizedDatasetId)
+    ? normalizedDatasetId
+    : DefaultDatasetId;
+}
 
 // Resolves the current result-limit value from custom inputs.
 // Returns null when the value is not a positive integer.
@@ -38,7 +46,6 @@ export function resolveResultLimit(
 }
 
 // Returns the default result-limit state from env (VITE_SEMANTIC_TOP_K),
-// normalized into { limitChoice, customLimit }.
 function getDefaultResultLimitState(): ResultLimitState {
   const semanticTopKFromEnvironment = (import.meta.env.VITE_SEMANTIC_TOP_K ?? "").trim();
 
@@ -72,7 +79,6 @@ function getDefaultResultLimitState(): ResultLimitState {
 }
 
 // Parses URL resultLimit value and normalizes it into
-// { limitChoice, customLimit } format used by state.
 function parseResultLimitState(resultLimitFromUrl: string): ResultLimitState {
   const normalizedResultLimit = resultLimitFromUrl.trim();
 
@@ -103,8 +109,8 @@ function parseResultLimitState(resultLimitFromUrl: string): ResultLimitState {
 }
 
 // Parses full map URL state from query params and returns normalized state
-// fields: semanticQuery, limitChoice, customLimit, selectedPointId.
 export function parseMapUrlState(searchParams: URLSearchParams): ParsedMapUrlState {
+  const datasetIdFromUrl = searchParams.get("datasetId") ?? "";
   const semanticQuery = (searchParams.get("semanticQuery") ?? "").trim();
   const resultLimitFromUrl = searchParams.get("resultLimit") ?? "";
   const selectedPointIdFromUrl = (searchParams.get("selectedPointId") ?? "").trim();
@@ -112,6 +118,7 @@ export function parseMapUrlState(searchParams: URLSearchParams): ParsedMapUrlSta
   const parsedResultLimitState = parseResultLimitState(resultLimitFromUrl);
 
   return {
+    datasetId: parseDatasetId(datasetIdFromUrl),
     semanticQuery,
     limitChoice: parsedResultLimitState.limitChoice,
     customLimit: parsedResultLimitState.customLimit,

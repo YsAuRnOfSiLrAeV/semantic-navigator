@@ -1,5 +1,6 @@
 import { createEngine } from "@ysaurnofsilraev/state-manager";
-import type { LimitChoice, TravelPoint } from "../../types";
+import { DefaultDatasetId } from "../../constants";
+import type { DatasetId, LimitChoice, TravelPoint } from "../../types";
 
 export type MapState = {
   points: TravelPoint[];
@@ -7,6 +8,9 @@ export type MapState = {
   open: boolean;
   loading: boolean;
   error: string | null;
+
+  selectedDatasetId: DatasetId;
+
   limitChoice: LimitChoice;
   customLimit: string;
 
@@ -16,9 +20,11 @@ export type MapState = {
 
   lastExecutedSemanticQuery: string;
   lastExecutedResultLimit: number | null;
+  lastExecutedDatasetId: DatasetId | null;
 
   totalPlacesCount: number | null;
 };
+
 
 const DEFAULT_LIMIT = import.meta.env.VITE_DEFAULT_POINTS_LIMIT as LimitChoice;
 
@@ -28,6 +34,9 @@ export const initialMapState: MapState = {
   open: false,
   loading: false,
   error: null,
+
+  selectedDatasetId: DefaultDatasetId,
+  
   limitChoice: DEFAULT_LIMIT,
   customLimit: "",
 
@@ -37,6 +46,8 @@ export const initialMapState: MapState = {
 
   lastExecutedSemanticQuery: "",
   lastExecutedResultLimit: null,
+  lastExecutedDatasetId: null,
+
   totalPlacesCount: null,
 };
 

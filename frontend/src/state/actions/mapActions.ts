@@ -1,5 +1,5 @@
 import { navigatorApi } from "../../api/apiClient";
-import type { LimitChoice, TravelPoint } from "../../types";
+import type { DatasetId, LimitChoice, TravelPoint } from "../../types";
 import { initialMapState, mapEngine } from "../engine/mapEngine";
 import { resolveResultLimit } from "../url/mapUrlParams";
 
@@ -62,13 +62,19 @@ export function setSemanticError(semanticError: string | null) {
   mapEngine.setValue("semanticError", semanticError);
 }
 
-function isSameAsLastExecutedSearch(normalizedSemanticQuery: string, resultLimit: number): boolean {
+function isSameAsLastExecutedSearch(
+  normalizedSemanticQuery: string,
+  resultLimit: number,
+  selectedDatasetId: DatasetId
+): boolean {
   const lastExecutedSemanticQuery = mapEngine.getCurrentValue("lastExecutedSemanticQuery");
   const lastExecutedResultLimit = mapEngine.getCurrentValue("lastExecutedResultLimit");
+  const lastExecutedDatasetId = mapEngine.getCurrentValue("lastExecutedDatasetId");
 
   return (
     normalizedSemanticQuery === lastExecutedSemanticQuery &&
-    resultLimit === lastExecutedResultLimit
+    resultLimit === lastExecutedResultLimit &&
+    selectedDatasetId === lastExecutedDatasetId
   );
 }
 
@@ -79,13 +85,18 @@ async function executeSemanticSearch(query: string) {
   }
 
   const resultLimit = resolveCurrentTopK();
-  if (isSameAsLastExecutedSearch(query, resultLimit)) return;
+  const selectedDatasetId = mapEngine.getCurrentValue("selectedDatasetId");
+  if (isSameAsLastExecutedSearch(query, resultLimit, selectedDatasetId)) return;
+
 
   try {
     setSemanticLoading(true);
     setSemanticError(null);
 
-    const response = await navigatorApi.searchSemantic(query, { topK: resultLimit });
+    const response = await navigatorApi.searchSemantic(query, {
+      datasetId: selectedDatasetId,
+      topK: resultLimit,
+    });
 
     setTotalPlacesCount(response.total_candidates);
     setPoints(response.results.map((item) => item.point));
@@ -95,6 +106,7 @@ async function executeSemanticSearch(query: string) {
       ...prev,
       lastExecutedSemanticQuery: query,
       lastExecutedResultLimit: resultLimit,
+      lastExecutedDatasetId: selectedDatasetId,
     }));
   } catch (error) {
     setSemanticError(error instanceof Error ? error.message : "Semantic search failed");
@@ -122,7 +134,8 @@ export async function loadPoints(limit: number | undefined, signal: AbortSignal)
   try {
     setLoading(true);
     setError(null);
-    const data = await navigatorApi.fetchPoints(limit, signal);
+    const selectedDatasetId = mapEngine.getCurrentValue("selectedDatasetId");
+    const data = await navigatorApi.fetchPoints(selectedDatasetId, limit, signal);
     setTotalPlacesCount(data.length);
     setPoints(data);
   } catch (err) {
@@ -135,4 +148,15 @@ export async function loadPoints(limit: number | undefined, signal: AbortSignal)
 
 export function setTotalPlacesCount(totalPlacesCount: number | null) {
   mapEngine.setValue("totalPlacesCount", totalPlacesCount);
+}
+
+export function setSelectedDatasetId(selectedDatasetId: DatasetId) {
+  mapEngine.updateTotalValue((prev) => ({
+    ...prev,
+    selectedDatasetId,
+    selectedId: null,
+    open: false,
+    error: null,
+    semanticError: null,
+  }));
 }

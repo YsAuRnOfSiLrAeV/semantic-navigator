@@ -42,3 +42,5 @@ export interface SemanticSearchResponse {
   total_candidates: number;
   results: SemanticSearchResult[];
 }
+
+export type DatasetId = "attractions_global" | "sport_global" | "museums_global";
