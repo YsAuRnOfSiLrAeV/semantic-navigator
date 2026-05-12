@@ -15,7 +15,7 @@ export class SemanticNavigatorApi {
     const res = await fetch(url.toString(), {
       signal,
       headers: {
-        "ngrok-skip-browser-warning": "true",
+        "ngrok-skip-browser-warning": "69420",
       },
     });
     if (!res.ok) throw new Error(`Failed to load points: ${res.status}`);
@@ -39,7 +39,7 @@ export class SemanticNavigatorApi {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "ngrok-skip-browser-warning": "true",
+        "ngrok-skip-browser-warning": "69420",
       },
       signal,
       body: JSON.stringify({ query, top_k: topK, limit }),
