@@ -12,7 +12,12 @@ export class SemanticNavigatorApi {
     url.searchParams.set("dataset_id", datasetId);
     if (limit !== undefined) url.searchParams.set("limit", String(limit));
 
-    const res = await fetch(url.toString(), { signal });
+    const res = await fetch(url.toString(), {
+      signal,
+      headers: {
+        "ngrok-skip-browser-warning": "true",
+      },
+    });
     if (!res.ok) throw new Error(`Failed to load points: ${res.status}`);
     return (await res.json()) as TravelPoint[];
   }
@@ -32,7 +37,10 @@ export class SemanticNavigatorApi {
 
     const res = await fetch(url.toString(), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true",
+      },
       signal,
       body: JSON.stringify({ query, top_k: topK, limit }),
     });
